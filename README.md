@@ -11,6 +11,10 @@ You can login as three pre-defined user roles using these credentials
 
 ```bash
 Username: admin, Password: password123
+```
+```bash
 Username: officer1,  Password: password123
+```
+```bash
 Username: manager1, Password: password123
 ```
