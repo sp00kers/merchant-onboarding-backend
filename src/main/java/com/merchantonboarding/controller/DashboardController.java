@@ -40,7 +40,7 @@ public class DashboardController {
      * Get user-specific dashboard data
      */
     @GetMapping("/user-stats/{userId}")
-    public ResponseEntity<Map<String, Object>> getUserDashboardStats(@PathVariable Long userId) {
+    public ResponseEntity<Map<String, Object>> getUserDashboardStats(@PathVariable String userId) {
         Map<String, Object> userStats = new HashMap<>();
         
         // Get cases assigned to user

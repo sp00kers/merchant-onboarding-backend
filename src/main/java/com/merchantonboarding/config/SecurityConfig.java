@@ -1,6 +1,5 @@
 package com.merchantonboarding.config;
 
-
 import com.merchantonboarding.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -14,18 +13,15 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
 
     @Autowired
     private UserService userService;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
-
 
     @Bean
     @SuppressWarnings("deprecation")
@@ -36,12 +32,10 @@ public class SecurityConfig {
         return authProvider;
     }
 
-
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -57,9 +51,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/cases/**").authenticated()
-                .requestMatchers("/api/users/**").hasRole("SYSTEM_ADMINISTRATOR")
-                .anyRequest().authenticated()
+                .requestMatchers("/api/roles/**").permitAll()
+                .requestMatchers("/api/cases/**").permitAll()
+                .requestMatchers("/api/users/**").permitAll()
+                .requestMatchers("/api/business-params/**").permitAll()
+                .anyRequest().permitAll()
             );
 
 

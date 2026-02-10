@@ -7,46 +7,33 @@ import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "risk_categories")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+public class RiskCategory {
     @Id
     @Column(length = 50)
     private String id;
 
     @Column(nullable = false)
-    private String name;
-
-    @Column(unique = true, nullable = false)
-    private String email;
+    private Integer level;
 
     @Column(nullable = false)
-    private String password;
-    
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "role_id")
-    private Role role;
+    private String name;
 
-    @Column(length = 100)
-    private String department;
-
-    @Column(length = 20)
-    private String phone;
-
-    @Column(length = 20)
-    private String status = "active";
-
-    @Column(name = "last_login")
-    private LocalDateTime lastLogin;
+    @Column(name = "score_range", length = 20)
+    private String scoreRange;
 
     @Column(length = 500)
-    private String notes;
+    private String description;
+
+    @Column(name = "actions_required", length = 1000)
+    private String actionsRequired;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -61,3 +48,4 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 }
+

@@ -16,17 +16,17 @@ public class Document {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "file_name")
-    private String fileName;
-    
-    @Column(name = "file_type")
-    private String fileType;
-    
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
+    private String type;
+
+    @Column(name = "uploaded_at")
+    private String uploadedAt;
+
     @Column(name = "file_path")
     private String filePath;
-    
-    @Column(name = "upload_date")
-    private LocalDateTime uploadDate;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "case_id")
@@ -34,6 +34,8 @@ public class Document {
     
     @PrePersist
     public void prePersist() {
-        this.uploadDate = LocalDateTime.now();
+        if (this.uploadedAt == null) {
+            this.uploadedAt = LocalDateTime.now().toString().replace("T", " ").substring(0, 16);
+        }
     }
 }

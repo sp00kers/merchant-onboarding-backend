@@ -3,8 +3,10 @@ package com.merchantonboarding.service;
 import com.merchantonboarding.dto.AuthResponse;
 import com.merchantonboarding.dto.LoginRequest;
 import com.merchantonboarding.dto.UserDTO;
+import com.merchantonboarding.dto.RoleDTO;
 import com.merchantonboarding.model.User;
 import com.merchantonboarding.model.Role;
+import com.merchantonboarding.model.Permission;
 import com.merchantonboarding.repository.UserRepository;
 import com.merchantonboarding.repository.RoleRepository;
 import com.merchantonboarding.exception.ResourceNotFoundException;
@@ -15,6 +17,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,6 +40,8 @@ public class AuthService {
     @Autowired
     private JwtService jwtService;
 
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
     /**
      * Authenticate user and return JWT token
      */
@@ -43,7 +49,7 @@ public class AuthService {
         System.out.println("=== Starting authentication for: " + loginRequest.getUsername());
         
         try {
-            // Authenticate user
+            // Authenticate user using email as username
             System.out.println("=== Calling AuthenticationManager.authenticate()");
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -53,19 +59,20 @@ public class AuthService {
             );
             System.out.println("=== Authentication successful: " + authentication.isAuthenticated());
 
-
-            // Get user details
+            // Get user details by email
             System.out.println("=== Looking up user in database");
-            User user = userRepository.findByUsername(loginRequest.getUsername())
+            User user = userRepository.findByEmail(loginRequest.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-            System.out.println("=== User found: " + user.getUsername());
+            System.out.println("=== User found: " + user.getEmail());
 
+            // Update last login
+            user.setLastLogin(LocalDateTime.now());
+            userRepository.save(user);
 
             // Generate JWT token
             System.out.println("=== Generating JWT token");
-            String token = jwtService.generateToken(user.getUsername());
+            String token = jwtService.generateToken(user.getEmail());
             System.out.println("=== Token generated: " + (token != null ? "SUCCESS" : "NULL"));
-
 
             // Convert to DTO
             System.out.println("=== Converting to DTO");
@@ -86,39 +93,39 @@ public class AuthService {
      * Register new user
      */
     public AuthResponse register(UserDTO userDTO) {
-        // Check if username already exists
-        if (userRepository.findByUsername(userDTO.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already exists");
+        // Check if email already exists
+        if (userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
         }
 
         // Create new user
         User user = new User();
-        user.setUsername(userDTO.getUsername());
-        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        user.setFullName(userDTO.getFullName());
+        user.setId("USR" + String.valueOf(System.currentTimeMillis()).substring(7));
+        user.setName(userDTO.getName());
         user.setEmail(userDTO.getEmail());
-        user.setEnabled(true);
+        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        user.setDepartment(userDTO.getDepartment());
+        user.setPhone(userDTO.getPhone());
+        user.setStatus("active");
+        user.setNotes(userDTO.getNotes());
 
-        // Set default role if no roles specified
-        Set<Role> roles;
-        if (userDTO.getRoles() != null && !userDTO.getRoles().isEmpty()) {
-            roles = userDTO.getRoles().stream()
-                .map(roleName -> roleRepository.findByName(Role.RoleName.valueOf(roleName))
-                    .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleName)))
-                .collect(Collectors.toSet());
+        // Set role
+        if (userDTO.getRoleId() != null) {
+            Role role = roleRepository.findById(userDTO.getRoleId())
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + userDTO.getRoleId()));
+            user.setRole(role);
         } else {
-            // Default to ONBOARDING_OFFICER role
-            Role defaultRole = roleRepository.findByName(Role.RoleName.ONBOARDING_OFFICER)
+            // Default to onboarding_officer role
+            Role defaultRole = roleRepository.findById("onboarding_officer")
                 .orElseThrow(() -> new ResourceNotFoundException("Default role not found"));
-            roles = Set.of(defaultRole);
+            user.setRole(defaultRole);
         }
-        user.setRoles(roles);
 
         // Save user
         User savedUser = userRepository.save(user);
 
         // Generate JWT token
-        String token = jwtService.generateToken(savedUser.getUsername());
+        String token = jwtService.generateToken(savedUser.getEmail());
 
         // Convert to DTO
         UserDTO responseDTO = convertToDTO(savedUser);
@@ -130,16 +137,16 @@ public class AuthService {
      * Refresh JWT token
      */
     public AuthResponse refreshToken(String token) {
-        String username = jwtService.extractUsername(token);
-        User user = userRepository.findByUsername(username)
+        String email = jwtService.extractUsername(token);
+        User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Validate token
-        if (!jwtService.isTokenValid(token, username)) {
+        if (!jwtService.isTokenValid(token, email)) {
             throw new RuntimeException("Invalid token");
         }
 
-        String newToken = jwtService.generateToken(user.getUsername());
+        String newToken = jwtService.generateToken(user.getEmail());
         UserDTO userDTO = convertToDTO(user);
 
         return new AuthResponse(newToken, userDTO);
@@ -148,14 +155,36 @@ public class AuthService {
     private UserDTO convertToDTO(User user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setFullName(user.getFullName());
+        dto.setName(user.getName());
         dto.setEmail(user.getEmail());
-        dto.setEnabled(user.isEnabled());
-        dto.setCreatedAt(user.getCreatedAt());
-        dto.setRoles(user.getRoles().stream()
-            .map(role -> role.getName().toString())
-            .collect(Collectors.toSet()));
+        dto.setUsername(user.getEmail()); // For compatibility
+        dto.setRoleId(user.getRole() != null ? user.getRole().getId() : null);
+        dto.setDepartment(user.getDepartment());
+        dto.setPhone(user.getPhone());
+        dto.setStatus(user.getStatus());
+        dto.setLastLogin(user.getLastLogin() != null ? user.getLastLogin().format(DATETIME_FORMATTER) : "Never");
+        dto.setNotes(user.getNotes());
+        dto.setCreatedAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null);
+
+        // Set role details
+        if (user.getRole() != null) {
+            RoleDTO roleDTO = new RoleDTO();
+            roleDTO.setId(user.getRole().getId());
+            roleDTO.setName(user.getRole().getName());
+            roleDTO.setDescription(user.getRole().getDescription());
+            roleDTO.setActive(user.getRole().isActive());
+
+            // Set permissions
+            if (user.getRole().getPermissions() != null) {
+                Set<String> permissionIds = user.getRole().getPermissions().stream()
+                    .map(Permission::getId)
+                    .collect(Collectors.toSet());
+                roleDTO.setPermissions(permissionIds);
+                dto.setPermissions(permissionIds);
+            }
+            dto.setRole(roleDTO);
+        }
+
         return dto;
     }
 }

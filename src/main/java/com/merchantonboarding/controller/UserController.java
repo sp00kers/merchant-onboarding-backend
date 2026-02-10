@@ -18,10 +18,19 @@ public class UserController {
     private UserService userService;
 
     /**
-     * Get all users with pagination
+     * Get all users as list (for frontend compatibility)
      */
     @GetMapping
-    public ResponseEntity<Page<UserDTO>> getAllUsers(
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        List<UserDTO> users = userService.getAllUsersAsList();
+        return ResponseEntity.ok(users);
+    }
+
+    /**
+     * Get all users with pagination
+     */
+    @GetMapping("/paged")
+    public ResponseEntity<Page<UserDTO>> getAllUsersPaged(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Page<UserDTO> users = userService.getAllUsers(page, size);
@@ -41,7 +50,7 @@ public class UserController {
      * Get user by ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserDTO> getUserById(@PathVariable String id) {
         UserDTO user = userService.getUserById(id);
         return ResponseEntity.ok(user);
     }
@@ -50,7 +59,7 @@ public class UserController {
      * Update user
      */
     @PutMapping("/{id}")
-    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @Valid @RequestBody UserDTO userDTO) {
+    public ResponseEntity<UserDTO> updateUser(@PathVariable String id, @Valid @RequestBody UserDTO userDTO) {
         UserDTO updatedUser = userService.updateUser(id, userDTO);
         return ResponseEntity.ok(updatedUser);
     }
@@ -59,7 +68,7 @@ public class UserController {
      * Delete user
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
@@ -67,9 +76,18 @@ public class UserController {
     /**
      * Get users by role
      */
-    @GetMapping("/by-role/{roleName}")
-    public ResponseEntity<List<UserDTO>> getUsersByRole(@PathVariable String roleName) {
-        List<UserDTO> users = userService.getUsersByRole(roleName);
+    @GetMapping("/by-role/{roleId}")
+    public ResponseEntity<List<UserDTO>> getUsersByRole(@PathVariable String roleId) {
+        List<UserDTO> users = userService.getUsersByRole(roleId);
+        return ResponseEntity.ok(users);
+    }
+
+    /**
+     * Search users
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<UserDTO>> searchUsers(@RequestParam String keyword) {
+        List<UserDTO> users = userService.searchUsers(keyword);
         return ResponseEntity.ok(users);
     }
 }

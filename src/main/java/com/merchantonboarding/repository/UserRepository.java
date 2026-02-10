@@ -9,19 +9,23 @@ import java.util.Optional;
 import java.util.List;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
-    
+public interface UserRepository extends JpaRepository<User, String> {
+
     // Derived query methods
-    Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
-    List<User> findByEnabledTrue();
-    
+    List<User> findByStatus(String status);
+    List<User> findByRoleId(String roleId);
+
     // Custom JPQL query for assignment requirements
-    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
-    List<User> findUsersByRole(@Param("roleName") String roleName);
-    
+    @Query("SELECT u FROM User u WHERE u.role.id = :roleId")
+    List<User> findUsersByRole(@Param("roleId") String roleId);
+
     // Native SQL query for assignment requirements
     @Query(value = "SELECT * FROM users u WHERE u.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)", 
            nativeQuery = true)
     List<User> findRecentUsers();
+
+    // Search users
+    @Query("SELECT u FROM User u WHERE u.name LIKE %:keyword% OR u.email LIKE %:keyword%")
+    List<User> searchUsers(@Param("keyword") String keyword);
 }

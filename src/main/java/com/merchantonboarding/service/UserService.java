@@ -1,8 +1,10 @@
 package com.merchantonboarding.service;
 
 import com.merchantonboarding.dto.UserDTO;
+import com.merchantonboarding.dto.RoleDTO;
 import com.merchantonboarding.model.User;
 import com.merchantonboarding.model.Role;
+import com.merchantonboarding.model.Permission;
 import com.merchantonboarding.repository.UserRepository;
 import com.merchantonboarding.repository.RoleRepository;
 import com.merchantonboarding.exception.ResourceNotFoundException;
@@ -18,11 +20,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-
 
 @Service
 @Transactional
@@ -37,99 +39,144 @@ public class UserService implements UserDetailsService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+
+        List<SimpleGrantedAuthority> authorities = List.of(
+            new SimpleGrantedAuthority("ROLE_" + user.getRole().getId().toUpperCase())
+        );
 
         return org.springframework.security.core.userdetails.User.builder()
-            .username(user.getUsername())
+            .username(user.getEmail())
             .password(user.getPassword())
-            .authorities(user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().toString()))
-                .collect(Collectors.toList()))
+            .authorities(authorities)
             .build();
     }
 
-    // Fixed: Return Page<UserDTO> instead of ResponseEntity<Page<UserDTO>>
     public Page<UserDTO> getAllUsers(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<User> userPage = userRepository.findAll(pageable);
         return userPage.map(this::convertToDTO);
     }
 
-    public UserDTO createUser(UserDTO userDTO) {
-        User user = new User();
-        user.setUsername(userDTO.getUsername());
-        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        user.setFullName(userDTO.getFullName());
-        user.setEmail(userDTO.getEmail());
-        user.setEnabled(userDTO.isEnabled());
+    public List<UserDTO> getAllUsersAsList() {
+        return userRepository.findAll().stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
+    }
 
-        // Set roles
-        Set<Role> roles = userDTO.getRoles().stream()
-            .map(roleName -> roleRepository.findByName(Role.RoleName.valueOf(roleName))
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleName)))
-            .collect(Collectors.toSet());
-        user.setRoles(roles);
+    public UserDTO createUser(UserDTO userDTO) {
+        // Check if email already exists
+        if (userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        User user = new User();
+        user.setId(userDTO.getId() != null ? userDTO.getId() : "USR" + String.valueOf(System.currentTimeMillis()).substring(7));
+        user.setName(userDTO.getName());
+        user.setEmail(userDTO.getEmail());
+        user.setPassword(passwordEncoder.encode(userDTO.getPassword() != null ? userDTO.getPassword() : "password123"));
+        user.setDepartment(userDTO.getDepartment());
+        user.setPhone(userDTO.getPhone());
+        user.setStatus(userDTO.getStatus() != null ? userDTO.getStatus() : "active");
+        user.setNotes(userDTO.getNotes());
+
+        // Set role
+        if (userDTO.getRoleId() != null) {
+            Role role = roleRepository.findById(userDTO.getRoleId())
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + userDTO.getRoleId()));
+            user.setRole(role);
+        }
 
         User savedUser = userRepository.save(user);
         return convertToDTO(savedUser);
     }
 
-    public UserDTO getUserById(Long id) {
+    public UserDTO getUserById(String id) {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         return convertToDTO(user);
     }
 
-    public UserDTO updateUser(Long id, UserDTO userDTO) {
+    public UserDTO updateUser(String id, UserDTO userDTO) {
         User existingUser = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
 
-        existingUser.setFullName(userDTO.getFullName());
+        existingUser.setName(userDTO.getName());
         existingUser.setEmail(userDTO.getEmail());
-        existingUser.setEnabled(userDTO.isEnabled());
+        existingUser.setDepartment(userDTO.getDepartment());
+        existingUser.setPhone(userDTO.getPhone());
+        existingUser.setStatus(userDTO.getStatus());
+        existingUser.setNotes(userDTO.getNotes());
 
         if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
             existingUser.setPassword(passwordEncoder.encode(userDTO.getPassword()));
         }
 
-        // Update roles
-        Set<Role> roles = userDTO.getRoles().stream()
-            .map(roleName -> roleRepository.findByName(Role.RoleName.valueOf(roleName))
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleName)))
-            .collect(Collectors.toSet());
-        existingUser.setRoles(roles);
+        // Update role
+        if (userDTO.getRoleId() != null) {
+            Role role = roleRepository.findById(userDTO.getRoleId())
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + userDTO.getRoleId()));
+            existingUser.setRole(role);
+        }
 
         User updatedUser = userRepository.save(existingUser);
         return convertToDTO(updatedUser);
     }
 
-    // Fixed: Return void instead of ResponseEntity<Void>
-    public void deleteUser(Long id) {
+    public void deleteUser(String id) {
         if (!userRepository.existsById(id)) {
             throw new ResourceNotFoundException("User not found with id: " + id);
         }
         userRepository.deleteById(id);
     }
 
-    public List<UserDTO> getUsersByRole(String roleName) {
-        List<User> users = userRepository.findUsersByRole(roleName);
+    public List<UserDTO> getUsersByRole(String roleId) {
+        List<User> users = userRepository.findUsersByRole(roleId);
+        return users.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public List<UserDTO> searchUsers(String keyword) {
+        List<User> users = userRepository.searchUsers(keyword);
         return users.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     private UserDTO convertToDTO(User user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setFullName(user.getFullName());
+        dto.setName(user.getName());
         dto.setEmail(user.getEmail());
-        dto.setEnabled(user.isEnabled());
-        dto.setCreatedAt(user.getCreatedAt());
-        dto.setRoles(user.getRoles().stream()
-            .map(role -> role.getName().toString())
-            .collect(Collectors.toSet()));
+        dto.setUsername(user.getEmail()); // For compatibility
+        dto.setRoleId(user.getRole() != null ? user.getRole().getId() : null);
+        dto.setDepartment(user.getDepartment());
+        dto.setPhone(user.getPhone());
+        dto.setStatus(user.getStatus());
+        dto.setLastLogin(user.getLastLogin() != null ? user.getLastLogin().format(DATETIME_FORMATTER) : "Never");
+        dto.setNotes(user.getNotes());
+        dto.setCreatedAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null);
+
+        // Set role details
+        if (user.getRole() != null) {
+            RoleDTO roleDTO = new RoleDTO();
+            roleDTO.setId(user.getRole().getId());
+            roleDTO.setName(user.getRole().getName());
+            roleDTO.setDescription(user.getRole().getDescription());
+            roleDTO.setActive(user.getRole().isActive());
+
+            if (user.getRole().getPermissions() != null) {
+                Set<String> permissionIds = user.getRole().getPermissions().stream()
+                    .map(Permission::getId)
+                    .collect(Collectors.toSet());
+                roleDTO.setPermissions(permissionIds);
+                dto.setPermissions(permissionIds);
+            }
+            dto.setRole(roleDTO);
+        }
+
         return dto;
     }
 }

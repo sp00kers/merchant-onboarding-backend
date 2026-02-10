@@ -1,7 +1,6 @@
 package com.merchantonboarding.controller;
 
 import com.merchantonboarding.dto.CaseDTO;
-import com.merchantonboarding.model.OnboardingCase.CaseStatus;
 import com.merchantonboarding.service.CaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,10 +20,21 @@ public class CaseController {
     
     /**
      * Get all cases with pagination and filtering
-     * Supports query parameters for page, size, and status
      */
     @GetMapping
-    public ResponseEntity<Page<CaseDTO>> getAllCases(
+    public ResponseEntity<List<CaseDTO>> getAllCases(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search) {
+
+        List<CaseDTO> cases = caseService.filterCases(status, search);
+        return ResponseEntity.ok(cases);
+    }
+
+    /**
+     * Get all cases with pagination
+     */
+    @GetMapping("/paged")
+    public ResponseEntity<Page<CaseDTO>> getAllCasesPaged(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status) {
@@ -45,42 +55,42 @@ public class CaseController {
     /**
      * Get case by ID with path parameter
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<CaseDTO> getCaseById(@PathVariable Long id) {
-        CaseDTO caseDTO = caseService.getCaseById(id);
+    @GetMapping("/{caseId}")
+    public ResponseEntity<CaseDTO> getCaseById(@PathVariable String caseId) {
+        CaseDTO caseDTO = caseService.getCaseById(caseId);
         return ResponseEntity.ok(caseDTO);
     }
     
     /**
      * Update existing case
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<CaseDTO> updateCase(@PathVariable Long id, 
+    @PutMapping("/{caseId}")
+    public ResponseEntity<CaseDTO> updateCase(@PathVariable String caseId,
                                               @Valid @RequestBody CaseDTO caseDTO) {
-        CaseDTO updatedCase = caseService.updateCase(id, caseDTO);
+        CaseDTO updatedCase = caseService.updateCase(caseId, caseDTO);
         return ResponseEntity.ok(updatedCase);
     }
     
     /**
-     * Delete case (soft delete)
+     * Delete case
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCase(@PathVariable Long id) {
-        caseService.deleteCase(id);
+    @DeleteMapping("/{caseId}")
+    public ResponseEntity<Void> deleteCase(@PathVariable String caseId) {
+        caseService.deleteCase(caseId);
         return ResponseEntity.noContent().build();
     }
     
     /**
-     * Get cases by assigned officer - custom derived query
+     * Get cases by assigned officer
      */
-    @GetMapping("/by-officer/{officerId}")
-    public ResponseEntity<List<CaseDTO>> getCasesByOfficer(@PathVariable Long officerId) {
-        List<CaseDTO> cases = caseService.getCasesByOfficer(officerId);
+    @GetMapping("/by-officer/{assignedTo}")
+    public ResponseEntity<List<CaseDTO>> getCasesByOfficer(@PathVariable String assignedTo) {
+        List<CaseDTO> cases = caseService.getCasesByOfficer(assignedTo);
         return ResponseEntity.ok(cases);
     }
     
     /**
-     * Search cases - JPQL query implementation
+     * Search cases
      */
     @GetMapping("/search")
     public ResponseEntity<List<CaseDTO>> searchCases(@RequestParam String keyword) {
@@ -89,7 +99,7 @@ public class CaseController {
     }
     
     /**
-     * Get case statistics - native SQL query
+     * Get case statistics
      */
     @GetMapping("/statistics")
     public ResponseEntity<Map<String, Long>> getCaseStatistics() {

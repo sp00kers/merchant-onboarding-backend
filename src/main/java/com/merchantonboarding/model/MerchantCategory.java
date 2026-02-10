@@ -7,46 +7,33 @@ import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "merchant_categories")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+public class MerchantCategory {
     @Id
     @Column(length = 50)
     private String id;
 
+    @Column(nullable = false, unique = true, length = 10)
+    private String code;
+
     @Column(nullable = false)
     private String name;
 
-    @Column(unique = true, nullable = false)
-    private String email;
+    @Column(length = 500)
+    private String description;
 
-    @Column(nullable = false)
-    private String password;
-    
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "role_id")
-    private Role role;
-
-    @Column(length = 100)
-    private String department;
-
-    @Column(length = 20)
-    private String phone;
+    @Column(name = "risk_level", length = 20)
+    private String riskLevel = "low";
 
     @Column(length = 20)
     private String status = "active";
 
-    @Column(name = "last_login")
-    private LocalDateTime lastLogin;
-
-    @Column(length = 500)
-    private String notes;
-
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
