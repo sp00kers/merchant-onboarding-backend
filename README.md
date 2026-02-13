@@ -24,6 +24,10 @@ docker ps
 Afterwards, open MySQL through the terminal:
 
 ```bash
+docker start merchant-onboarding
+```
+
+```bash
 docker exec -it merchant-onboarding mysql -uroot -pyourpassword
 ```
 
