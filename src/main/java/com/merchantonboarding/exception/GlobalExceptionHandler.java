@@ -76,6 +76,22 @@ public class GlobalExceptionHandler {
     }
     
     /**
+     * Handle illegal argument exceptions (e.g., invalid email domain)
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+            IllegalArgumentException ex) {
+
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setMessage(ex.getMessage());
+        errorResponse.setStatus(HttpStatus.BAD_REQUEST.value());
+        errorResponse.setTimestamp(LocalDateTime.now());
+        errorResponse.setErrors(null);
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
      * Handle general exceptions
      */
     @ExceptionHandler(Exception.class)

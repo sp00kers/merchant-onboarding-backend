@@ -1,6 +1,9 @@
 package com.merchantonboarding.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -20,6 +23,9 @@ public class User {
     private String name;
 
     @Column(unique = true, nullable = false)
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email should be valid")
+    @Pattern(regexp = "^[a-zA-Z0-9._%+-]+@bank\\.com$", message = "Email must use @bank.com domain")
     private String email;
 
     @Column(nullable = false)

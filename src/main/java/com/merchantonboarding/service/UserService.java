@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +41,13 @@ public class UserService implements UserDetailsService {
     private PasswordEncoder passwordEncoder;
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final Pattern EMAIL_DOMAIN_PATTERN = Pattern.compile("^[a-zA-Z0-9._%+-]+@bank\\.com$");
+
+    private void validateEmailDomain(String email) {
+        if (email == null || !EMAIL_DOMAIN_PATTERN.matcher(email).matches()) {
+            throw new IllegalArgumentException("Email must use @bank.com domain");
+        }
+    }
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -85,6 +93,9 @@ public class UserService implements UserDetailsService {
     }
 
     public UserDTO createUser(UserDTO userDTO) {
+        // Validate email domain
+        validateEmailDomain(userDTO.getEmail());
+
         // Check if email already exists
         if (userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
@@ -120,6 +131,18 @@ public class UserService implements UserDetailsService {
     public UserDTO updateUser(String id, UserDTO userDTO) {
         User existingUser = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+
+        // Validate email domain
+        validateEmailDomain(userDTO.getEmail());
+
+        // Check if email is being changed and if the new email already belongs to another user
+        if (!existingUser.getEmail().equals(userDTO.getEmail())) {
+            userRepository.findByEmail(userDTO.getEmail()).ifPresent(user -> {
+                if (!user.getId().equals(id)) {
+                    throw new RuntimeException("Email already exists");
+                }
+            });
+        }
 
         existingUser.setName(userDTO.getName());
         existingUser.setEmail(userDTO.getEmail());

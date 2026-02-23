@@ -14,6 +14,7 @@ public class UserDTO {
 
     @Email(message = "Email should be valid")
     @NotBlank(message = "Email is required")
+    @Pattern(regexp = "^[a-zA-Z0-9._%+-]+@bank\\.com$", message = "Email must use @bank.com domain")
     private String email;
     
     @Size(min = 6, message = "Password must be at least 6 characters")

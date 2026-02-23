@@ -1,5 +1,6 @@
 package com.merchantonboarding.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.util.Set;
@@ -15,6 +16,7 @@ public class RoleDTO {
 
     private Set<String> permissions;
 
+    @JsonProperty("isActive")
     private boolean isActive = true;
 
     private String createdAt;
