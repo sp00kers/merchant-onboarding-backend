@@ -65,6 +65,12 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             System.out.println("=== User found: " + user.getEmail());
 
+            // Check if user is active
+            if (!"active".equals(user.getStatus())) {
+                System.out.println("=== User account is deactivated");
+                throw new RuntimeException("Your account has been deactivated. Please contact an administrator.");
+            }
+
             // Update last login
             user.setLastLogin(LocalDateTime.now());
             userRepository.save(user);

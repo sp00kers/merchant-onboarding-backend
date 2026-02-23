@@ -3,6 +3,7 @@ package com.merchantonboarding.controller;
 import com.merchantonboarding.service.CaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,8 +18,10 @@ public class DashboardController {
 
     /**
      * Get dashboard statistics for the main dashboard view
+     * Accessible to all authenticated users
      */
     @GetMapping("/stats")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getDashboardStats() {
         Map<String, Object> stats = new HashMap<>();
         
@@ -38,8 +41,10 @@ public class DashboardController {
 
     /**
      * Get user-specific dashboard data
+     * Accessible to all authenticated users
      */
     @GetMapping("/user-stats/{userId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getUserDashboardStats(@PathVariable String userId) {
         Map<String, Object> userStats = new HashMap<>();
         

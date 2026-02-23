@@ -46,14 +46,29 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
-        List<SimpleGrantedAuthority> authorities = List.of(
-            new SimpleGrantedAuthority("ROLE_" + user.getRole().getId().toUpperCase())
-        );
+        // Build authorities list with role and permissions
+        List<SimpleGrantedAuthority> authorities = new java.util.ArrayList<>();
+
+        // Add role authority (prefixed with ROLE_)
+        if (user.getRole() != null) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().getId().toUpperCase()));
+
+            // Add all permissions as authorities
+            if (user.getRole().getPermissions() != null) {
+                user.getRole().getPermissions().forEach(permission -> {
+                    authorities.add(new SimpleGrantedAuthority(permission.getId().toUpperCase()));
+                });
+            }
+        }
 
         return org.springframework.security.core.userdetails.User.builder()
             .username(user.getEmail())
             .password(user.getPassword())
             .authorities(authorities)
+            .accountExpired(false)
+            .accountLocked(!"active".equals(user.getStatus()))
+            .credentialsExpired(false)
+            .disabled(!"active".equals(user.getStatus()))
             .build();
     }
 
@@ -143,6 +158,27 @@ public class UserService implements UserDetailsService {
     public List<UserDTO> searchUsers(String keyword) {
         List<User> users = userRepository.searchUsers(keyword);
         return users.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * Toggle user status (active/inactive)
+     * Admins cannot be deactivated
+     */
+    public UserDTO toggleUserStatus(String id) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+
+        // Prevent deactivating admin users
+        if (user.getRole() != null && "admin".equals(user.getRole().getId()) && "active".equals(user.getStatus())) {
+            throw new RuntimeException("Admin users cannot be deactivated");
+        }
+
+        // Toggle status
+        String newStatus = "active".equals(user.getStatus()) ? "inactive" : "active";
+        user.setStatus(newStatus);
+
+        User updatedUser = userRepository.save(user);
+        return convertToDTO(updatedUser);
     }
 
     private UserDTO convertToDTO(User user) {
