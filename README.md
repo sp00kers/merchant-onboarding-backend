@@ -33,17 +33,6 @@ docker exec -it merchant-onboarding mysql -uroot -pyourpassword
 
 ## Starting back-end server
 
+Before starting back-end server, do start with MySQL database with injecting values from data.sql.
+
 To start the back-end server, simply run the application through Boot Dashboard.
-
-## Login
-You can login as three pre-defined user roles using these credentials
-
-```bash
-Username: admin, Password: password123
-```
-```bash
-Username: officer1,  Password: password123
-```
-```bash
-Username: manager1, Password: password123
-```
