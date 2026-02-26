@@ -22,6 +22,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import java.util.regex.Pattern;
+
 @Service
 public class AuthService {
 
@@ -41,6 +43,13 @@ public class AuthService {
     private JwtService jwtService;
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final Pattern EMAIL_DOMAIN_PATTERN = Pattern.compile("^[a-zA-Z0-9._%+-]+@bank\\.com$");
+
+    private void validateEmailDomain(String email) {
+        if (email == null || !EMAIL_DOMAIN_PATTERN.matcher(email).matches()) {
+            throw new IllegalArgumentException("Email must use @bank.com domain");
+        }
+    }
 
     /**
      * Authenticate user and return JWT token
@@ -99,6 +108,9 @@ public class AuthService {
      * Register new user
      */
     public AuthResponse register(UserDTO userDTO) {
+        // Validate email domain - only @bank.com allowed
+        validateEmailDomain(userDTO.getEmail());
+
         // Check if email already exists
         if (userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
