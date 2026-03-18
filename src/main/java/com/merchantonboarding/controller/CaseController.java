@@ -1,15 +1,28 @@
 package com.merchantonboarding.controller;
 
-import com.merchantonboarding.dto.CaseDTO;
-import com.merchantonboarding.service.CaseService;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.merchantonboarding.dto.CaseDTO;
+import com.merchantonboarding.service.CaseService;
+
 import jakarta.validation.Valid;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/cases")
@@ -124,5 +137,18 @@ public class CaseController {
     public ResponseEntity<Map<String, Long>> getCaseStatistics() {
         Map<String, Long> statistics = caseService.getCaseStatistics();
         return ResponseEntity.ok(statistics);
+    }
+
+    /**
+     * Assign case to a reviewer
+     * Requires CASE_MANAGEMENT or CASE_CREATION permission
+     */
+    @PatchMapping("/{caseId}/assign")
+    @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
+    public ResponseEntity<CaseDTO> assignCase(@PathVariable String caseId,
+                                              @RequestBody Map<String, String> request) {
+        String assignedTo = request.get("assignedTo");
+        CaseDTO updatedCase = caseService.assignCase(caseId, assignedTo);
+        return ResponseEntity.ok(updatedCase);
     }
 }

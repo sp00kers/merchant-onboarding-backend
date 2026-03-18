@@ -1,11 +1,11 @@
 package com.merchantonboarding.service;
 
-import com.merchantonboarding.dto.CaseDTO;
-import com.merchantonboarding.model.OnboardingCase;
-import com.merchantonboarding.model.Document;
-import com.merchantonboarding.model.CaseHistory;
-import com.merchantonboarding.repository.CaseRepository;
-import com.merchantonboarding.exception.ResourceNotFoundException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,11 +13,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+
+import com.merchantonboarding.dto.CaseDTO;
+import com.merchantonboarding.exception.ResourceNotFoundException;
+import com.merchantonboarding.model.CaseHistory;
+import com.merchantonboarding.model.OnboardingCase;
+import com.merchantonboarding.repository.CaseRepository;
 
 @Service
 @Transactional
@@ -199,6 +200,31 @@ public class CaseService {
         onboardingCase.getHistory().add(historyEntry);
 
         caseRepository.save(onboardingCase);
+    }
+
+    /**
+     * Assign case to a reviewer
+     */
+    public CaseDTO assignCase(String caseId, String assignedTo) {
+        OnboardingCase onboardingCase = caseRepository.findById(caseId)
+            .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
+
+        String previousAssignee = onboardingCase.getAssignedTo();
+        onboardingCase.setAssignedTo(assignedTo);
+
+        // Add history entry
+        CaseHistory historyEntry = new CaseHistory();
+        historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
+        if (previousAssignee != null && !previousAssignee.isEmpty()) {
+            historyEntry.setAction("Case reassigned from '" + previousAssignee + "' to '" + assignedTo + "'");
+        } else {
+            historyEntry.setAction("Case assigned to '" + assignedTo + "'");
+        }
+        historyEntry.setOnboardingCase(onboardingCase);
+        onboardingCase.getHistory().add(historyEntry);
+
+        OnboardingCase updatedCase = caseRepository.save(onboardingCase);
+        return convertToDTO(updatedCase);
     }
 
     private String generateCaseId() {
