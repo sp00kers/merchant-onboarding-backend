@@ -1,9 +1,15 @@
 package com.merchantonboarding.service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +19,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.merchantonboarding.dto.CaseDTO;
 import com.merchantonboarding.exception.ResourceNotFoundException;
 import com.merchantonboarding.model.CaseHistory;
+import com.merchantonboarding.model.Document;
 import com.merchantonboarding.model.OnboardingCase;
 import com.merchantonboarding.repository.CaseRepository;
 
@@ -187,6 +195,27 @@ public class CaseService {
     }
     
     /**
+     * Update case status
+     */
+    public CaseDTO updateCaseStatus(String caseId, String status) {
+        OnboardingCase onboardingCase = caseRepository.findById(caseId)
+            .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
+
+        String oldStatus = onboardingCase.getStatus();
+        onboardingCase.setStatus(status);
+
+        // Add history entry for status change
+        CaseHistory historyEntry = new CaseHistory();
+        historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
+        historyEntry.setAction("Status changed from '" + oldStatus + "' to '" + status + "'");
+        historyEntry.setOnboardingCase(onboardingCase);
+        onboardingCase.getHistory().add(historyEntry);
+
+        OnboardingCase updatedCase = caseRepository.save(onboardingCase);
+        return convertToDTO(updatedCase);
+    }
+
+    /**
      * Add history entry to a case
      */
     public void addHistoryEntry(String caseId, String action) {
@@ -227,10 +256,70 @@ public class CaseService {
         return convertToDTO(updatedCase);
     }
 
+    /**
+     * Upload documents for a case
+     */
+    public CaseDTO uploadDocuments(String caseId, MultipartFile[] files, String[] types) {
+        OnboardingCase onboardingCase = caseRepository.findById(caseId)
+            .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
+
+        Path uploadDir = Paths.get("uploads", caseId);
+        try {
+            Files.createDirectories(uploadDir);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create upload directory", e);
+        }
+
+        for (int i = 0; i < files.length; i++) {
+            MultipartFile file = files[i];
+            if (file.isEmpty()) continue;
+
+            String originalName = file.getOriginalFilename();
+            String safeName = UUID.randomUUID() + "_" + (originalName != null ? originalName.replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
+            Path filePath = uploadDir.resolve(safeName);
+
+            try {
+                Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to store file: " + originalName, e);
+            }
+
+            Document doc = new Document();
+            doc.setName(originalName);
+            doc.setType(types != null && i < types.length ? types[i] : file.getContentType());
+            doc.setFilePath(filePath.toString());
+            doc.setOnboardingCase(onboardingCase);
+            onboardingCase.getDocuments().add(doc);
+        }
+
+        // Add history entry
+        CaseHistory historyEntry = new CaseHistory();
+        historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
+        historyEntry.setAction(files.length + " document(s) uploaded");
+        historyEntry.setOnboardingCase(onboardingCase);
+        onboardingCase.getHistory().add(historyEntry);
+
+        OnboardingCase saved = caseRepository.save(onboardingCase);
+        return convertToDTO(saved);
+    }
+
     private String generateCaseId() {
         int year = LocalDateTime.now().getYear();
-        long count = caseRepository.count() + 1;
-        return String.format("MOP-%d-%03d", year, count);
+        String prefix = String.format("MOP-%d-", year);
+        // Find the max existing sequence number to avoid collisions after deletions
+        long maxSeq = caseRepository.findAll().stream()
+            .map(OnboardingCase::getCaseId)
+            .filter(id -> id != null && id.startsWith(prefix))
+            .map(id -> {
+                try {
+                    return Long.parseLong(id.substring(prefix.length()));
+                } catch (NumberFormatException e) {
+                    return 0L;
+                }
+            })
+            .max(Long::compareTo)
+            .orElse(0L);
+        return String.format("MOP-%d-%03d", year, maxSeq + 1);
     }
 
     private CaseDTO convertToDTO(OnboardingCase c) {

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.merchantonboarding.dto.CaseDTO;
 import com.merchantonboarding.service.CaseService;
@@ -140,6 +142,33 @@ public class CaseController {
     }
 
     /**
+     * Update case status
+     * Requires CASE_MANAGEMENT permission
+     */
+    @PatchMapping("/{caseId}/status")
+    @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
+    public ResponseEntity<CaseDTO> updateCaseStatus(@PathVariable String caseId,
+                                                    @RequestBody Map<String, String> request) {
+        String status = request.get("status");
+        CaseDTO updatedCase = caseService.updateCaseStatus(caseId, status);
+        return ResponseEntity.ok(updatedCase);
+    }
+
+    /**
+     * Add history entry to a case
+     * Requires CASE_VIEW or CASE_MANAGEMENT permission
+     */
+    @PostMapping("/{caseId}/history")
+    @PreAuthorize("hasAuthority('CASE_VIEW') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
+    public ResponseEntity<CaseDTO> addHistoryEntry(@PathVariable String caseId,
+                                                   @RequestBody Map<String, String> request) {
+        String action = request.get("action");
+        caseService.addHistoryEntry(caseId, action);
+        CaseDTO updatedCase = caseService.getCaseById(caseId);
+        return ResponseEntity.ok(updatedCase);
+    }
+
+    /**
      * Assign case to a reviewer
      * Requires CASE_MANAGEMENT or CASE_CREATION permission
      */
@@ -149,6 +178,20 @@ public class CaseController {
                                               @RequestBody Map<String, String> request) {
         String assignedTo = request.get("assignedTo");
         CaseDTO updatedCase = caseService.assignCase(caseId, assignedTo);
+        return ResponseEntity.ok(updatedCase);
+    }
+
+    /**
+     * Upload documents for a case
+     * Requires CASE_CREATION or DOCUMENT_UPLOAD permission
+     */
+    @PostMapping(value = "/{caseId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('CASE_CREATION') or hasAuthority('DOCUMENT_UPLOAD') or hasAuthority('ALL_MODULES')")
+    public ResponseEntity<CaseDTO> uploadDocuments(
+            @PathVariable String caseId,
+            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(value = "types", required = false) String[] types) {
+        CaseDTO updatedCase = caseService.uploadDocuments(caseId, files, types);
         return ResponseEntity.ok(updatedCase);
     }
 }
