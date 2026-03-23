@@ -34,7 +34,8 @@ INSERT IGNORE INTO permissions (id, name, description, category, is_active, crea
 ('risk_assessment', 'Risk Assessment', 'Conduct risk assessments', 'case', true, NOW(), NOW()),
 ('background_check', 'Background Check', 'Perform background verifications', 'case', true, NOW(), NOW()),
 ('external_api_access', 'External API Access', 'Access external APIs', 'system', true, NOW(), NOW()),
-('verification_reports', 'Verification Reports', 'Generate verification reports', 'report', true, NOW(), NOW());
+('verification_reports', 'Verification Reports', 'Generate verification reports', 'report', true, NOW(), NOW()),
+('audit_view', 'Audit View', 'View audit logs and system activity', 'system', true, NOW(), NOW());
 
 -- Insert Roles (IGNORE if already exists)
 INSERT IGNORE INTO roles (id, name, description, is_active, created_at, updated_at) VALUES
@@ -50,7 +51,8 @@ INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
 ('admin', 'user_management'),
 ('admin', 'system_configuration'),
 ('admin', 'role_management'),
-('admin', 'permission_management');
+('admin', 'permission_management'),
+('admin', 'audit_view');
 
 -- Onboarding Officer permissions
 INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES

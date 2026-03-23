@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.merchantonboarding.annotation.Auditable;
 import com.merchantonboarding.dto.CaseDTO;
 import com.merchantonboarding.exception.ResourceNotFoundException;
 import com.merchantonboarding.model.CaseHistory;
@@ -31,10 +32,16 @@ import com.merchantonboarding.repository.CaseRepository;
 @Service
 @Transactional
 public class CaseService {
-    
+
     @Autowired
     private CaseRepository caseRepository;
-    
+
+    @Autowired(required = false)
+    private NotificationService notificationService;
+
+    @Autowired
+    private com.merchantonboarding.repository.UserRepository userRepository;
+
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -67,6 +74,7 @@ public class CaseService {
     /**
      * Create new case
      */
+    @Auditable(action = "CREATE_CASE", entityType = "Case")
     public CaseDTO createCase(CaseDTO caseDTO) {
         OnboardingCase newCase = convertToEntity(caseDTO);
 
@@ -83,9 +91,17 @@ public class CaseService {
         newCase.getHistory().add(historyEntry);
 
         OnboardingCase savedCase = caseRepository.save(newCase);
+
+        // Send notifications
+        if (notificationService != null) {
+            String assignedUserId = getAssignedUserId(savedCase.getAssignedTo());
+            notificationService.notifyCaseCreated(savedCase.getCaseId(), savedCase.getBusinessName(),
+                    null, assignedUserId);
+        }
+
         return convertToDTO(savedCase);
     }
-    
+
     /**
      * Get case by ID
      */
@@ -98,6 +114,7 @@ public class CaseService {
     /**
      * Update case
      */
+    @Auditable(action = "UPDATE_CASE", entityType = "Case")
     public CaseDTO updateCase(String caseId, CaseDTO caseDTO) {
         OnboardingCase existingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
@@ -138,6 +155,7 @@ public class CaseService {
     /**
      * Delete case
      */
+    @Auditable(action = "DELETE_CASE", entityType = "Case")
     public void deleteCase(String caseId) {
         if (!caseRepository.existsById(caseId)) {
             throw new ResourceNotFoundException("Case not found with id: " + caseId);
@@ -197,6 +215,7 @@ public class CaseService {
     /**
      * Update case status
      */
+    @Auditable(action = "UPDATE_CASE_STATUS", entityType = "Case")
     public CaseDTO updateCaseStatus(String caseId, String status) {
         OnboardingCase onboardingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
@@ -212,6 +231,14 @@ public class CaseService {
         onboardingCase.getHistory().add(historyEntry);
 
         OnboardingCase updatedCase = caseRepository.save(onboardingCase);
+
+        // Send notification for status change
+        if (notificationService != null) {
+            String assignedUserId = getAssignedUserId(updatedCase.getAssignedTo());
+            notificationService.notifyCaseStatusChanged(caseId, updatedCase.getBusinessName(),
+                    oldStatus, status, null, assignedUserId);
+        }
+
         return convertToDTO(updatedCase);
     }
 
@@ -234,6 +261,7 @@ public class CaseService {
     /**
      * Assign case to a reviewer
      */
+    @Auditable(action = "ASSIGN_CASE", entityType = "Case")
     public CaseDTO assignCase(String caseId, String assignedTo) {
         OnboardingCase onboardingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
@@ -253,6 +281,16 @@ public class CaseService {
         onboardingCase.getHistory().add(historyEntry);
 
         OnboardingCase updatedCase = caseRepository.save(onboardingCase);
+
+        // Send notification for assignment
+        if (notificationService != null) {
+            String assignedUserId = getAssignedUserId(assignedTo);
+            if (assignedUserId != null) {
+                notificationService.notifyCaseAssigned(caseId, updatedCase.getBusinessName(),
+                        assignedUserId, null);
+            }
+        }
+
         return convertToDTO(updatedCase);
     }
 
@@ -339,6 +377,8 @@ public class CaseService {
         dto.setAssignedTo(c.getAssignedTo());
         dto.setPriority(c.getPriority());
         dto.setLastUpdated(c.getLastUpdated());
+        dto.setRiskScore(c.getRiskScore());
+        dto.setRiskLevel(c.getRiskLevel());
 
         // Convert documents
         if (c.getDocuments() != null) {
@@ -386,5 +426,20 @@ public class CaseService {
         c.setCreatedDate(dto.getCreatedDate() != null ? dto.getCreatedDate() : LocalDateTime.now().format(DATE_FORMATTER));
 
         return c;
+    }
+
+    /**
+     * Get user ID from assigned name (for notifications)
+     */
+    private String getAssignedUserId(String assignedToName) {
+        if (assignedToName == null || assignedToName.isEmpty()) {
+            return null;
+        }
+        // Try to find user by name
+        return userRepository.findAll().stream()
+                .filter(u -> assignedToName.equals(u.getName()))
+                .map(u -> u.getId())
+                .findFirst()
+                .orElse(null);
     }
 }

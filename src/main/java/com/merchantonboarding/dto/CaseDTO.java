@@ -1,8 +1,12 @@
 package com.merchantonboarding.dto;
 
-import jakarta.validation.constraints.*;
-import lombok.Data;
 import java.util.List;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
 
 @Data
 public class CaseDTO {
@@ -42,6 +46,10 @@ public class CaseDTO {
     private String assignedTo;
     private String priority;
     private String lastUpdated;
+
+    // Risk scoring fields
+    private Integer riskScore;
+    private String riskLevel;
 
     private List<DocumentDTO> documents;
     private List<CaseHistoryDTO> history;

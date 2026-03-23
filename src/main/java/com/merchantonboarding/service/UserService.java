@@ -1,31 +1,32 @@
 package com.merchantonboarding.service;
 
-import com.merchantonboarding.dto.UserDTO;
-import com.merchantonboarding.dto.RoleDTO;
-import com.merchantonboarding.model.User;
-import com.merchantonboarding.model.Role;
-import com.merchantonboarding.model.Permission;
-import com.merchantonboarding.repository.UserRepository;
-import com.merchantonboarding.repository.RoleRepository;
-import com.merchantonboarding.exception.ResourceNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.merchantonboarding.annotation.Auditable;
+import com.merchantonboarding.dto.RoleDTO;
+import com.merchantonboarding.dto.UserDTO;
+import com.merchantonboarding.exception.ResourceNotFoundException;
+import com.merchantonboarding.model.Permission;
+import com.merchantonboarding.model.Role;
+import com.merchantonboarding.model.User;
+import com.merchantonboarding.repository.RoleRepository;
+import com.merchantonboarding.repository.UserRepository;
 
 @Service
 @Transactional
@@ -92,6 +93,7 @@ public class UserService implements UserDetailsService {
             .collect(Collectors.toList());
     }
 
+    @Auditable(action = "CREATE_USER", entityType = "User")
     public UserDTO createUser(UserDTO userDTO) {
         // Validate email domain
         validateEmailDomain(userDTO.getEmail());
@@ -128,6 +130,7 @@ public class UserService implements UserDetailsService {
         return convertToDTO(user);
     }
 
+    @Auditable(action = "UPDATE_USER", entityType = "User")
     public UserDTO updateUser(String id, UserDTO userDTO) {
         User existingUser = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
@@ -166,6 +169,7 @@ public class UserService implements UserDetailsService {
         return convertToDTO(updatedUser);
     }
 
+    @Auditable(action = "DELETE_USER", entityType = "User")
     public void deleteUser(String id) {
         if (!userRepository.existsById(id)) {
             throw new ResourceNotFoundException("User not found with id: " + id);
@@ -187,6 +191,7 @@ public class UserService implements UserDetailsService {
      * Toggle user status (active/inactive)
      * Admins cannot be deactivated
      */
+    @Auditable(action = "TOGGLE_USER_STATUS", entityType = "User")
     public UserDTO toggleUserStatus(String id) {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));

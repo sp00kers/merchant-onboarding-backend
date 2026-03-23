@@ -1,18 +1,21 @@
 package com.merchantonboarding.service;
 
-import com.merchantonboarding.dto.RoleDTO;
-import com.merchantonboarding.dto.PermissionDTO;
-import com.merchantonboarding.model.Role;
-import com.merchantonboarding.model.Permission;
-import com.merchantonboarding.repository.RoleRepository;
-import com.merchantonboarding.repository.PermissionRepository;
-import com.merchantonboarding.exception.ResourceNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.merchantonboarding.annotation.Auditable;
+import com.merchantonboarding.dto.PermissionDTO;
+import com.merchantonboarding.dto.RoleDTO;
+import com.merchantonboarding.exception.ResourceNotFoundException;
+import com.merchantonboarding.model.Permission;
+import com.merchantonboarding.model.Role;
+import com.merchantonboarding.repository.PermissionRepository;
+import com.merchantonboarding.repository.RoleRepository;
 
 @Service
 @Transactional
@@ -44,6 +47,7 @@ public class RoleService {
         return convertRoleToDTO(role);
     }
 
+    @Auditable(action = "CREATE_ROLE", entityType = "Role")
     public RoleDTO createRole(RoleDTO roleDTO) {
         Role role = new Role();
         role.setId(roleDTO.getId() != null ? roleDTO.getId() : "role_" + System.currentTimeMillis());
@@ -64,6 +68,7 @@ public class RoleService {
         return convertRoleToDTO(savedRole);
     }
 
+    @Auditable(action = "UPDATE_ROLE", entityType = "Role")
     public RoleDTO updateRole(String id, RoleDTO roleDTO) {
         Role role = roleRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + id));
@@ -85,6 +90,7 @@ public class RoleService {
         return convertRoleToDTO(savedRole);
     }
 
+    @Auditable(action = "DELETE_ROLE", entityType = "Role")
     public void deleteRole(String id) {
         if (!roleRepository.existsById(id)) {
             throw new ResourceNotFoundException("Role not found: " + id);
@@ -123,6 +129,7 @@ public class RoleService {
             .collect(Collectors.toList());
     }
 
+    @Auditable(action = "CREATE_PERMISSION", entityType = "Permission")
     public PermissionDTO createPermission(PermissionDTO permissionDTO) {
         Permission permission = new Permission();
         permission.setId(permissionDTO.getId() != null ? permissionDTO.getId() : "perm_" + System.currentTimeMillis());
@@ -135,6 +142,7 @@ public class RoleService {
         return convertPermissionToDTO(savedPermission);
     }
 
+    @Auditable(action = "UPDATE_PERMISSION", entityType = "Permission")
     public PermissionDTO updatePermission(String id, PermissionDTO permissionDTO) {
         Permission permission = permissionRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Permission not found: " + id));
@@ -148,6 +156,7 @@ public class RoleService {
         return convertPermissionToDTO(savedPermission);
     }
 
+    @Auditable(action = "DELETE_PERMISSION", entityType = "Permission")
     public void deletePermission(String id) {
         if (!permissionRepository.existsById(id)) {
             throw new ResourceNotFoundException("Permission not found: " + id);

@@ -1,15 +1,11 @@
 package com.merchantonboarding.service;
 
-import com.merchantonboarding.dto.AuthResponse;
-import com.merchantonboarding.dto.LoginRequest;
-import com.merchantonboarding.dto.UserDTO;
-import com.merchantonboarding.dto.RoleDTO;
-import com.merchantonboarding.model.User;
-import com.merchantonboarding.model.Role;
-import com.merchantonboarding.model.Permission;
-import com.merchantonboarding.repository.UserRepository;
-import com.merchantonboarding.repository.RoleRepository;
-import com.merchantonboarding.exception.ResourceNotFoundException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,12 +13,21 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Set;
-import java.util.stream.Collectors;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.regex.Pattern;
+import com.merchantonboarding.dto.AuthResponse;
+import com.merchantonboarding.dto.LoginRequest;
+import com.merchantonboarding.dto.RoleDTO;
+import com.merchantonboarding.dto.UserDTO;
+import com.merchantonboarding.exception.ResourceNotFoundException;
+import com.merchantonboarding.model.Permission;
+import com.merchantonboarding.model.Role;
+import com.merchantonboarding.model.User;
+import com.merchantonboarding.repository.RoleRepository;
+import com.merchantonboarding.repository.UserRepository;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 public class AuthService {
@@ -42,6 +47,9 @@ public class AuthService {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    private AuditService auditService;
+
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final Pattern EMAIL_DOMAIN_PATTERN = Pattern.compile("^[a-zA-Z0-9._%+-]+@bank\\.com$");
 
@@ -56,7 +64,8 @@ public class AuthService {
      */
     public AuthResponse authenticate(LoginRequest loginRequest) throws AuthenticationException {
         System.out.println("=== Starting authentication for: " + loginRequest.getUsername());
-        
+        String ipAddress = getClientIpAddress();
+
         try {
             // Authenticate user using email as username
             System.out.println("=== Calling AuthenticationManager.authenticate()");
@@ -77,6 +86,8 @@ public class AuthService {
             // Check if user is active
             if (!"active".equals(user.getStatus())) {
                 System.out.println("=== User account is deactivated");
+                auditService.logAction("LOGIN_FAILED", "User", user.getId(),
+                    user.getId(), user.getEmail(), ipAddress, null, null, "FAILURE", "Account deactivated");
                 throw new RuntimeException("Your account has been deactivated. Please contact an administrator.");
             }
 
@@ -89,16 +100,23 @@ public class AuthService {
             String token = jwtService.generateToken(user.getEmail());
             System.out.println("=== Token generated: " + (token != null ? "SUCCESS" : "NULL"));
 
+            // Log successful login
+            auditService.logAction("LOGIN_SUCCESS", "User", user.getId(),
+                user.getId(), user.getEmail(), ipAddress, null, null, "SUCCESS", "User logged in successfully");
+
             // Convert to DTO
             System.out.println("=== Converting to DTO");
             UserDTO userDTO = convertToDTO(user);
-            
+
             AuthResponse response = new AuthResponse(token, userDTO);
             System.out.println("=== AuthResponse created successfully");
             return response;
-            
+
         } catch (Exception e) {
             System.out.println("=== Authentication failed: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            // Log failed login attempt
+            auditService.logAction("LOGIN_FAILED", "User", null,
+                null, loginRequest.getUsername(), ipAddress, null, null, "FAILURE", e.getMessage());
             e.printStackTrace();
             throw e;
         }
@@ -204,5 +222,22 @@ public class AuthService {
         }
 
         return dto;
+    }
+
+    private String getClientIpAddress() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                HttpServletRequest request = attributes.getRequest();
+                String xForwardedFor = request.getHeader("X-Forwarded-For");
+                if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+                    return xForwardedFor.split(",")[0].trim();
+                }
+                return request.getRemoteAddr();
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return null;
     }
 }
