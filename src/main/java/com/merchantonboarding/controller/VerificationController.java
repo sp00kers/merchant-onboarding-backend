@@ -73,9 +73,10 @@ public class VerificationController {
     public ResponseEntity<List<Map<String, String>>> getVerificationTypes() {
         List<Map<String, String>> types = List.of(
             Map.of("code", "BUSINESS_REGISTRY", "name", "Business Registry", "description", "Verify business registration with SSM"),
-            Map.of("code", "DIRECTOR_IDENTITY", "name", "Director Identity", "description", "Verify director identity and conduct watchlist check"),
-            Map.of("code", "ADDRESS", "name", "Address Verification", "description", "Verify business address existence"),
-            Map.of("code", "FINANCIAL", "name", "Financial Check", "description", "Credit score and litigation check")
+            Map.of("code", "IDENTITY_VERIFICATION", "name", "Identity Verification", "description", "Verify director identity and conduct watchlist check"),
+            Map.of("code", "ADDRESS_VERIFICATION", "name", "Address Verification", "description", "Verify business address existence"),
+            Map.of("code", "FINANCIAL_CHECK", "name", "Financial Check", "description", "Credit score and litigation check"),
+            Map.of("code", "SANCTIONS_SCREENING", "name", "Sanctions Screening", "description", "Screen against global sanctions and watchlists")
         );
         return ResponseEntity.ok(types);
     }

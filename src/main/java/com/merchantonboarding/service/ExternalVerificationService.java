@@ -44,12 +44,13 @@ public class ExternalVerificationService {
 
     // Available verification types
     public static final String TYPE_BUSINESS_REGISTRY = "BUSINESS_REGISTRY";
-    public static final String TYPE_DIRECTOR_IDENTITY = "DIRECTOR_IDENTITY";
-    public static final String TYPE_ADDRESS = "ADDRESS";
-    public static final String TYPE_FINANCIAL = "FINANCIAL";
+    public static final String TYPE_IDENTITY_VERIFICATION = "IDENTITY_VERIFICATION";
+    public static final String TYPE_ADDRESS_VERIFICATION = "ADDRESS_VERIFICATION";
+    public static final String TYPE_FINANCIAL_CHECK = "FINANCIAL_CHECK";
+    public static final String TYPE_SANCTIONS_SCREENING = "SANCTIONS_SCREENING";
 
     public static final List<String> ALL_VERIFICATION_TYPES = Arrays.asList(
-            TYPE_BUSINESS_REGISTRY, TYPE_DIRECTOR_IDENTITY, TYPE_ADDRESS, TYPE_FINANCIAL
+            TYPE_BUSINESS_REGISTRY, TYPE_IDENTITY_VERIFICATION, TYPE_ADDRESS_VERIFICATION, TYPE_FINANCIAL_CHECK, TYPE_SANCTIONS_SCREENING
     );
 
     /**
@@ -237,7 +238,7 @@ public class ExternalVerificationService {
                 result.setNotes("Business registry verification completed successfully");
                 break;
 
-            case TYPE_DIRECTOR_IDENTITY:
+            case TYPE_IDENTITY_VERIFICATION:
                 responseData.put("identityVerified", true);
                 responseData.put("directorName", caseData.getDirectorName());
                 responseData.put("icNumber", caseData.getDirectorIC());
@@ -249,10 +250,10 @@ public class ExternalVerificationService {
                     riskIndicators.add("Potential Politically Exposed Person (PEP)");
                 }
 
-                result.setNotes("Director identity verification completed");
+                result.setNotes("Identity verification completed");
                 break;
 
-            case TYPE_ADDRESS:
+            case TYPE_ADDRESS_VERIFICATION:
                 responseData.put("addressVerified", true);
                 responseData.put("address", caseData.getBusinessAddress());
                 responseData.put("addressType", "COMMERCIAL");
@@ -266,7 +267,7 @@ public class ExternalVerificationService {
                 result.setNotes("Address verification completed");
                 break;
 
-            case TYPE_FINANCIAL:
+            case TYPE_FINANCIAL_CHECK:
                 responseData.put("creditScore", 650 + random.nextInt(150));
                 responseData.put("bankruptcyCheck", "CLEAR");
                 responseData.put("outstandingLitigation", random.nextInt(10) < 2);
@@ -277,7 +278,26 @@ public class ExternalVerificationService {
                     riskIndicators.add("Outstanding litigation detected");
                 }
 
-                result.setNotes("Financial verification completed");
+                result.setNotes("Financial check completed");
+                break;
+
+            case TYPE_SANCTIONS_SCREENING:
+                responseData.put("sanctionsMatch", false);
+                responseData.put("screenedLists", List.of("UN Sanctions", "OFAC SDN", "EU Sanctions", "BNM Sanctions"));
+                responseData.put("businessName", caseData.getBusinessName());
+                responseData.put("directorName", caseData.getDirectorName());
+                responseData.put("matchScore", 0);
+
+                boolean potentialMatch = random.nextInt(10) < 1; // 10% chance of potential match
+                if (potentialMatch) {
+                    responseData.put("sanctionsMatch", true);
+                    responseData.put("matchScore", 60 + random.nextInt(30));
+                    baseScore -= 30;
+                    riskIndicators.add("Potential sanctions list match detected");
+                    riskIndicators.add("Manual review required for sanctions clearance");
+                }
+
+                result.setNotes("Sanctions screening completed");
                 break;
         }
 

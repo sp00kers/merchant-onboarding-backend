@@ -29,7 +29,7 @@ public class VerificationResult {
     private OnboardingCase onboardingCase;
 
     @Column(name = "verification_type", nullable = false, length = 50)
-    private String verificationType; // BUSINESS_REGISTRY, DIRECTOR_IDENTITY, ADDRESS, FINANCIAL
+    private String verificationType; // BUSINESS_REGISTRY, IDENTITY_VERIFICATION, ADDRESS_VERIFICATION, FINANCIAL_CHECK, SANCTIONS_SCREENING
 
     @Column(nullable = false, length = 20)
     private String status; // PENDING, IN_PROGRESS, COMPLETED, FAILED
