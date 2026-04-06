@@ -82,13 +82,12 @@ public class VerificationController {
     }
 
     /**
-     * Webhook endpoint for external verification services (mock)
+     * Webhook endpoint (legacy) — verification responses are now handled via Kafka consumer.
+     * This endpoint is retained for potential non-Kafka fallback or manual testing.
      */
     @PostMapping("/webhook")
     public ResponseEntity<Void> receiveWebhook(@RequestBody Map<String, Object> payload) {
-        // This would process real webhook responses from external APIs
-        // For the mock implementation, processing is done asynchronously
-        System.out.println("Received webhook: " + payload);
+        System.out.println("Received webhook (legacy endpoint): " + payload);
         return ResponseEntity.ok().build();
     }
 }
