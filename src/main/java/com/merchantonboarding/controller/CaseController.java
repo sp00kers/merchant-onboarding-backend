@@ -5,9 +5,12 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.merchantonboarding.dto.CaseDTO;
+import com.merchantonboarding.model.User;
+import com.merchantonboarding.repository.UserRepository;
 import com.merchantonboarding.service.CaseService;
 
 import jakarta.validation.Valid;
@@ -33,6 +38,9 @@ public class CaseController {
     
     @Autowired
     private CaseService caseService;
+
+    @Autowired
+    private UserRepository userRepository;
     
     /**
      * Get all cases with pagination and filtering
@@ -143,13 +151,36 @@ public class CaseController {
 
     /**
      * Update case status
-     * Requires CASE_MANAGEMENT permission
+     * Requires CASE_MANAGEMENT permission.
+     * Compliance reviewers can only approve/reject cases assigned to them.
+     * Admins can approve/reject any case.
      */
     @PatchMapping("/{caseId}/status")
     @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<CaseDTO> updateCaseStatus(@PathVariable String caseId,
                                                     @RequestBody Map<String, String> request) {
         String status = request.get("status");
+
+        // Enforce: compliance reviewers can only approve/reject cases assigned to them
+        if ("Approved".equals(status) || "Rejected".equals(status)) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAdmin = auth.getAuthorities().stream()
+                    .anyMatch(a -> "ALL_MODULES".equals(a.getAuthority()) || "ROLE_ADMIN".equals(a.getAuthority()));
+
+            if (!isAdmin) {
+                // Look up current user's name from their email (principal)
+                String email = auth.getName();
+                String currentUserName = userRepository.findByEmail(email)
+                        .map(User::getName)
+                        .orElse(null);
+
+                CaseDTO caseData = caseService.getCaseById(caseId);
+                if (currentUserName == null || !currentUserName.equals(caseData.getAssignedTo())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+            }
+        }
+
         CaseDTO updatedCase = caseService.updateCaseStatus(caseId, status);
         return ResponseEntity.ok(updatedCase);
     }

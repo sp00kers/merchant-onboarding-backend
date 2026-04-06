@@ -192,8 +192,9 @@ public class CaseService {
         }
 
         if (status != null && !status.isEmpty()) {
+            String normalizedFilter = status.toLowerCase().replace(" ", "_");
             cases = cases.stream()
-                .filter(c -> c.getStatus().equals(status))
+                .filter(c -> c.getStatus().toLowerCase().replace(" ", "_").equals(normalizedFilter))
                 .collect(Collectors.toList());
         }
 
