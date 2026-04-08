@@ -68,12 +68,6 @@ public class OnboardingCase {
     @Column(name = "last_updated")
     private String lastUpdated;
 
-    @Column(name = "risk_score")
-    private Integer riskScore;
-
-    @Column(name = "risk_level", length = 20)
-    private String riskLevel;
-
     @OneToMany(mappedBy = "onboardingCase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Document> documents = new ArrayList<>();
 

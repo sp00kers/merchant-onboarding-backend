@@ -378,8 +378,6 @@ public class CaseService {
         dto.setAssignedTo(c.getAssignedTo());
         dto.setPriority(c.getPriority());
         dto.setLastUpdated(c.getLastUpdated());
-        dto.setRiskScore(c.getRiskScore());
-        dto.setRiskLevel(c.getRiskLevel());
 
         // Convert documents
         if (c.getDocuments() != null) {

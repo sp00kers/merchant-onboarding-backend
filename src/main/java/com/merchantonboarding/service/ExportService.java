@@ -51,7 +51,7 @@ public class ExportService {
         try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT
                 .withHeader("Case ID", "Business Name", "Business Type", "Registration Number",
                         "Merchant Category", "Director Name", "Director IC", "Director Phone",
-                        "Director Email", "Status", "Priority", "Risk Level", "Risk Score",
+                        "Director Email", "Status", "Priority",
                         "Assigned To", "Created Date", "Last Updated"))) {
 
             for (OnboardingCase c : cases) {
@@ -67,8 +67,6 @@ public class ExportService {
                         c.getDirectorEmail(),
                         c.getStatus(),
                         c.getPriority(),
-                        c.getRiskLevel(),
-                        c.getRiskScore(),
                         c.getAssignedTo(),
                         c.getCreatedDate(),
                         c.getLastUpdated()
@@ -104,8 +102,6 @@ public class ExportService {
             printer.printRecord("Director Email", c.getDirectorEmail());
             printer.printRecord("Status", c.getStatus());
             printer.printRecord("Priority", c.getPriority());
-            printer.printRecord("Risk Level", c.getRiskLevel());
-            printer.printRecord("Risk Score", c.getRiskScore());
             printer.printRecord("Assigned To", c.getAssignedTo());
             printer.printRecord("Created Date", c.getCreatedDate());
             printer.printRecord("Last Updated", c.getLastUpdated());
@@ -129,12 +125,12 @@ public class ExportService {
         addGeneratedInfo(document);
 
         // Create table
-        PdfPTable table = new PdfPTable(8);
+        PdfPTable table = new PdfPTable(7);
         table.setWidthPercentage(100);
         table.setSpacingBefore(20);
 
         // Header
-        String[] headers = {"Case ID", "Business Name", "Type", "Status", "Priority", "Risk", "Assigned To", "Created"};
+        String[] headers = {"Case ID", "Business Name", "Type", "Status", "Priority", "Assigned To", "Created"};
         for (String header : headers) {
             PdfPCell cell = new PdfPCell(new Phrase(header, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9)));
             cell.setBackgroundColor(new Color(52, 152, 219));
@@ -150,7 +146,6 @@ public class ExportService {
             table.addCell(new Phrase(nvl(c.getBusinessType()), dataFont));
             table.addCell(createStatusCell(c.getStatus()));
             table.addCell(new Phrase(nvl(c.getPriority()), dataFont));
-            table.addCell(createRiskCell(c.getRiskLevel()));
             table.addCell(new Phrase(nvl(c.getAssignedTo()), dataFont));
             table.addCell(new Phrase(nvl(c.getCreatedDate()), dataFont));
         }
@@ -205,8 +200,6 @@ public class ExportService {
         addSectionTitle(document, "Case Status");
         addDetailRow(document, "Status", c.getStatus());
         addDetailRow(document, "Priority", c.getPriority());
-        addDetailRow(document, "Risk Level", c.getRiskLevel());
-        addDetailRow(document, "Risk Score", c.getRiskScore() != null ? c.getRiskScore().toString() : "Not calculated");
         addDetailRow(document, "Assigned To", c.getAssignedTo());
         addDetailRow(document, "Created Date", c.getCreatedDate());
         addDetailRow(document, "Last Updated", c.getLastUpdated());
@@ -275,24 +268,6 @@ public class ExportService {
             cell.setBackgroundColor(new Color(248, 215, 218));
         } else if (status != null && status.contains("Review")) {
             cell.setBackgroundColor(new Color(204, 229, 255));
-        }
-
-        return cell;
-    }
-
-    private PdfPCell createRiskCell(String riskLevel) {
-        Font font = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8);
-        PdfPCell cell = new PdfPCell(new Phrase(nvl(riskLevel), font));
-        cell.setPadding(5);
-
-        if ("LOW".equalsIgnoreCase(riskLevel)) {
-            cell.setBackgroundColor(new Color(212, 237, 218));
-        } else if ("MEDIUM".equalsIgnoreCase(riskLevel)) {
-            cell.setBackgroundColor(new Color(255, 243, 205));
-        } else if ("HIGH".equalsIgnoreCase(riskLevel)) {
-            cell.setBackgroundColor(new Color(255, 229, 208));
-        } else if ("CRITICAL".equalsIgnoreCase(riskLevel)) {
-            cell.setBackgroundColor(new Color(248, 215, 218));
         }
 
         return cell;

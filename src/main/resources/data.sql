@@ -102,29 +102,3 @@ INSERT IGNORE INTO risk_categories (id, level, name, score_range, description, a
 ('rc1', 1, 'Low Risk', '0-30', 'Minimal risk requiring standard verification', 'Standard document verification and basic due diligence', NOW(), NOW()),
 ('rc2', 2, 'Medium Risk', '31-70', 'Moderate risk requiring enhanced verification', 'Enhanced due diligence, additional documentation, senior approval required', NOW(), NOW()),
 ('rc3', 3, 'High Risk', '71-100', 'High risk requiring comprehensive assessment', 'Comprehensive due diligence, management approval, ongoing monitoring', NOW(), NOW());
-
--- Insert Sample Cases (IGNORE if already exists)
-INSERT IGNORE INTO onboarding_cases (case_id, business_name, business_type, registration_number, merchant_category, business_address, director_name, director_ic, director_phone, director_email, status, created_date, assigned_to, priority, last_updated, created_at, updated_at) VALUES
-('MOP-2024-001', 'ABC Electronics Sdn Bhd', 'Sdn Bhd', '201801012345', 'Retail', '123 Technology Park, Cyberjaya, Selangor, Malaysia', 'Ahmad bin Abdullah', '850123-14-5678', '+60123456789', 'ahmad@abcelectronics.com', 'Pending Review', '2024-01-15', 'John Doe', 'Normal', '2024-01-15 14:20', NOW(), NOW()),
-('MOP-2024-002', 'XYZ Trading', 'Partnership', '201901054321', 'E-commerce', '456 Business Park, Kuala Lumpur, Malaysia', 'Lim Wei Chen', '880512-10-1234', '+60198765432', 'lim@xyztrading.com', 'Background Verification', '2024-01-14', 'Jane Smith', 'Normal', '2024-01-14 16:00', NOW(), NOW()),
-('MOP-2024-003', 'Tech Solutions Ltd', 'Bhd', '201701098765', 'Services', '789 Innovation Hub, Penang, Malaysia', 'Raj Kumar', '790815-07-9876', '+60171234567', 'raj@techsolutions.com', 'Approved', '2024-01-13', 'Mike Johnson', 'Normal', '2024-01-13 11:30', NOW(), NOW()),
-('MOP-2024-004', 'Digital Marketing Co', 'Sdn Bhd', '202001067890', 'Services', '321 Digital Avenue, Johor Bahru, Malaysia', 'Siti Aminah', '910303-01-5432', '+60131234567', 'siti@digitalmarketing.com', 'Compliance Review', '2024-01-12', 'Jane Smith', 'High', '2024-01-12 09:15', NOW(), NOW()),
-('MOP-2024-005', 'Fresh Foods Enterprise', 'Sole Proprietorship', '202101023456', 'Food & Beverage', '555 Food Street, Shah Alam, Malaysia', 'Tan Ah Kow', '750620-08-2345', '+60167890123', 'tan@freshfoods.com', 'Rejected', '2024-01-11', 'Mike Johnson', 'Normal', '2024-01-11 14:45', NOW(), NOW());
-
--- Insert Case History (IGNORE if already exists)
-INSERT IGNORE INTO case_history (time, action, case_id) VALUES
-('2024-01-15 10:30', 'Case created by John Doe', 'MOP-2024-001'),
-('2024-01-15 10:35', 'Assigned to Compliance Team', 'MOP-2024-001'),
-('2024-01-15 14:20', 'Documents uploaded', 'MOP-2024-001'),
-('2024-01-14 09:00', 'Case created by Jane Smith', 'MOP-2024-002'),
-('2024-01-14 16:00', 'Sent for background verification', 'MOP-2024-002'),
-('2024-01-13 08:00', 'Case created by Mike Johnson', 'MOP-2024-003'),
-('2024-01-13 11:30', 'Case approved', 'MOP-2024-003');
-
--- Insert Documents (IGNORE if already exists)
-INSERT IGNORE INTO documents (name, type, uploaded_at, file_path, case_id) VALUES
-('Business Registration Certificate', 'pdf', '2024-01-15 10:30', '/uploads/MOP-2024-001/registration.pdf', 'MOP-2024-001'),
-('Director ID Copy', 'pdf', '2024-01-15 10:32', '/uploads/MOP-2024-001/director_id.pdf', 'MOP-2024-001'),
-('Financial Statement', 'pdf', '2024-01-15 14:20', '/uploads/MOP-2024-001/financial.pdf', 'MOP-2024-001'),
-('Business Registration Certificate', 'pdf', '2024-01-14 09:05', '/uploads/MOP-2024-002/registration.pdf', 'MOP-2024-002'),
-('Director ID Copy', 'pdf', '2024-01-14 09:07', '/uploads/MOP-2024-002/director_id.pdf', 'MOP-2024-002');

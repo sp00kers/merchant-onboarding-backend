@@ -47,10 +47,6 @@ public class CaseDTO {
     private String priority;
     private String lastUpdated;
 
-    // Risk scoring fields
-    private Integer riskScore;
-    private String riskLevel;
-
     private List<DocumentDTO> documents;
     private List<CaseHistoryDTO> history;
 
