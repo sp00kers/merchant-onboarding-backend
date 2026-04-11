@@ -119,6 +119,12 @@ public class CaseService {
         OnboardingCase existingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
 
+        // Prevent editing of Rejected or Approved cases
+        String currentStatus = existingCase.getStatus();
+        if (currentStatus != null && (currentStatus.equalsIgnoreCase("Rejected") || currentStatus.equalsIgnoreCase("Approved"))) {
+            throw new IllegalStateException("Cases with status '" + currentStatus + "' cannot be edited");
+        }
+
         // Track status change for history
         String oldStatus = existingCase.getStatus();
 
@@ -133,7 +139,6 @@ public class CaseService {
         existingCase.setDirectorPhone(caseDTO.getDirectorPhone());
         existingCase.setDirectorEmail(caseDTO.getDirectorEmail());
         existingCase.setAssignedTo(caseDTO.getAssignedTo());
-        existingCase.setPriority(caseDTO.getPriority());
 
         if (caseDTO.getStatus() != null) {
             existingCase.setStatus(caseDTO.getStatus());
@@ -376,7 +381,6 @@ public class CaseService {
         dto.setStatus(c.getStatus());
         dto.setCreatedDate(c.getCreatedDate());
         dto.setAssignedTo(c.getAssignedTo());
-        dto.setPriority(c.getPriority());
         dto.setLastUpdated(c.getLastUpdated());
 
         // Convert documents
@@ -420,7 +424,6 @@ public class CaseService {
         c.setDirectorPhone(dto.getDirectorPhone());
         c.setDirectorEmail(dto.getDirectorEmail());
         c.setAssignedTo(dto.getAssignedTo());
-        c.setPriority(dto.getPriority() != null ? dto.getPriority() : "Normal");
         c.setStatus(dto.getStatus() != null ? dto.getStatus() : "Pending Review");
         c.setCreatedDate(dto.getCreatedDate() != null ? dto.getCreatedDate() : LocalDateTime.now().format(DATE_FORMATTER));
 

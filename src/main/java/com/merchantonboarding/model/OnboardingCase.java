@@ -62,9 +62,6 @@ public class OnboardingCase {
     @Column(name = "assigned_to")
     private String assignedTo;
 
-    @Column(length = 20)
-    private String priority = "Normal";
-
     @Column(name = "last_updated")
     private String lastUpdated;
 

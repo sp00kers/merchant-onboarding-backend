@@ -66,7 +66,8 @@ INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
 ('compliance_reviewer', 'case_management'),
 ('compliance_reviewer', 'compliance_check'),
 ('compliance_reviewer', 'risk_assessment'),
-('compliance_reviewer', 'document_upload');
+('compliance_reviewer', 'document_upload'),
+('compliance_reviewer', 'system_configuration');
 
 -- Verifier permissions
 INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES

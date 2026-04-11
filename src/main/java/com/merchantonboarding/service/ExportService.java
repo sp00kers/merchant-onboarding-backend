@@ -51,7 +51,7 @@ public class ExportService {
         try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT
                 .withHeader("Case ID", "Business Name", "Business Type", "Registration Number",
                         "Merchant Category", "Director Name", "Director IC", "Director Phone",
-                        "Director Email", "Status", "Priority",
+                        "Director Email", "Status",
                         "Assigned To", "Created Date", "Last Updated"))) {
 
             for (OnboardingCase c : cases) {
@@ -66,7 +66,6 @@ public class ExportService {
                         c.getDirectorPhone(),
                         c.getDirectorEmail(),
                         c.getStatus(),
-                        c.getPriority(),
                         c.getAssignedTo(),
                         c.getCreatedDate(),
                         c.getLastUpdated()
@@ -101,7 +100,6 @@ public class ExportService {
             printer.printRecord("Director Phone", c.getDirectorPhone());
             printer.printRecord("Director Email", c.getDirectorEmail());
             printer.printRecord("Status", c.getStatus());
-            printer.printRecord("Priority", c.getPriority());
             printer.printRecord("Assigned To", c.getAssignedTo());
             printer.printRecord("Created Date", c.getCreatedDate());
             printer.printRecord("Last Updated", c.getLastUpdated());
@@ -125,12 +123,12 @@ public class ExportService {
         addGeneratedInfo(document);
 
         // Create table
-        PdfPTable table = new PdfPTable(7);
+        PdfPTable table = new PdfPTable(6);
         table.setWidthPercentage(100);
         table.setSpacingBefore(20);
 
         // Header
-        String[] headers = {"Case ID", "Business Name", "Type", "Status", "Priority", "Assigned To", "Created"};
+        String[] headers = {"Case ID", "Business Name", "Type", "Status", "Assigned To", "Created"};
         for (String header : headers) {
             PdfPCell cell = new PdfPCell(new Phrase(header, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9)));
             cell.setBackgroundColor(new Color(52, 152, 219));
@@ -145,7 +143,6 @@ public class ExportService {
             table.addCell(new Phrase(nvl(c.getBusinessName()), dataFont));
             table.addCell(new Phrase(nvl(c.getBusinessType()), dataFont));
             table.addCell(createStatusCell(c.getStatus()));
-            table.addCell(new Phrase(nvl(c.getPriority()), dataFont));
             table.addCell(new Phrase(nvl(c.getAssignedTo()), dataFont));
             table.addCell(new Phrase(nvl(c.getCreatedDate()), dataFont));
         }
@@ -199,7 +196,6 @@ public class ExportService {
         // Case Status
         addSectionTitle(document, "Case Status");
         addDetailRow(document, "Status", c.getStatus());
-        addDetailRow(document, "Priority", c.getPriority());
         addDetailRow(document, "Assigned To", c.getAssignedTo());
         addDetailRow(document, "Created Date", c.getCreatedDate());
         addDetailRow(document, "Last Updated", c.getLastUpdated());

@@ -44,7 +44,6 @@ public class CaseDTO {
     private String status;
     private String createdDate;
     private String assignedTo;
-    private String priority;
     private String lastUpdated;
 
     private List<DocumentDTO> documents;

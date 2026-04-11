@@ -116,9 +116,8 @@ public class ExternalVerificationService {
         summary.setPendingCount((int) results.stream().filter(v -> "PENDING".equals(v.getStatus()) || "IN_PROGRESS".equals(v.getStatus())).count());
         summary.setFailedCount((int) results.stream().filter(v -> "FAILED".equals(v.getStatus())).count());
 
-        // Calculate average confidence score
+        // Calculate average confidence score for recommendation
         Double avgScore = verificationResultRepository.getAverageConfidenceScoreByCaseId(caseId);
-        summary.setAverageConfidenceScore(avgScore != null ? avgScore.intValue() : 0);
 
         // Determine overall status
         if (summary.getFailedCount() > 0) {

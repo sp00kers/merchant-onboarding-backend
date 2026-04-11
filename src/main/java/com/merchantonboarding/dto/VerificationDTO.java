@@ -26,7 +26,6 @@ public class VerificationDTO {
         private int completedCount;
         private int pendingCount;
         private int failedCount;
-        private int averageConfidenceScore;
         private String overallStatus;
         private String recommendation;
     }
