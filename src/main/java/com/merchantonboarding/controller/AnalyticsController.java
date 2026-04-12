@@ -22,7 +22,7 @@ public class AnalyticsController {
      * Get comprehensive dashboard analytics
      */
     @GetMapping("/dashboard")
-    @PreAuthorize("hasAnyAuthority('DASHBOARD_VIEW', 'REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('DASHBOARD_VIEW', 'REPORTS', 'CASE_VIEW', 'CASE_CREATION', 'CASE_MANAGEMENT', 'ALL_MODULES')")
     public ResponseEntity<AnalyticsDTO> getDashboardAnalytics() {
         AnalyticsDTO analytics = analyticsService.getDashboardAnalytics();
         return ResponseEntity.ok(analytics);
@@ -32,7 +32,7 @@ public class AnalyticsController {
      * Get analytics for a specific date range
      */
     @GetMapping("/range")
-    @PreAuthorize("hasAnyAuthority('DASHBOARD_VIEW', 'REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('DASHBOARD_VIEW', 'REPORTS', 'CASE_VIEW', 'CASE_CREATION', 'CASE_MANAGEMENT', 'ALL_MODULES')")
     public ResponseEntity<AnalyticsDTO> getAnalyticsByRange(
             @RequestParam String startDate,
             @RequestParam String endDate) {

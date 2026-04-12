@@ -81,7 +81,30 @@ public class CaseController {
         CaseDTO createdCase = caseService.createCase(caseDTO);
         return ResponseEntity.ok(createdCase);
     }
-    
+
+    /**
+     * Save case as draft (no field validation required)
+     * Requires CASE_CREATION permission
+     */
+    @PostMapping("/draft")
+    @PreAuthorize("hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
+    public ResponseEntity<CaseDTO> saveDraft(@RequestBody CaseDTO caseDTO) {
+        CaseDTO createdCase = caseService.saveDraft(caseDTO);
+        return ResponseEntity.ok(createdCase);
+    }
+
+    /**
+     * Update draft case (no field validation required)
+     * Requires CASE_MANAGEMENT permission
+     */
+    @PutMapping("/{caseId}/draft")
+    @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
+    public ResponseEntity<CaseDTO> updateDraft(@PathVariable String caseId,
+                                               @RequestBody CaseDTO caseDTO) {
+        CaseDTO updatedCase = caseService.updateDraft(caseId, caseDTO);
+        return ResponseEntity.ok(updatedCase);
+    }
+
     /**
      * Get case by ID with path parameter
      * Requires CASE_VIEW permission

@@ -15,7 +15,6 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- DELETE FROM permissions;
 -- DELETE FROM business_types;
 -- DELETE FROM merchant_categories;
--- DELETE FROM risk_categories;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -97,9 +96,3 @@ INSERT IGNORE INTO merchant_categories (id, code, name, description, risk_level,
 ('mc2', 'ECM', 'E-commerce', 'Online retail and digital commerce', 'medium', 'active', NOW(), NOW()),
 ('mc3', 'F&B', 'Food & Beverage', 'Restaurants, cafes, and food services', 'low', 'active', NOW(), NOW()),
 ('mc4', 'SRV', 'Services', 'Professional and business services', 'medium', 'active', NOW(), NOW());
-
--- Insert Risk Categories (IGNORE if already exists)
-INSERT IGNORE INTO risk_categories (id, level, name, score_range, description, actions_required, created_at, updated_at) VALUES
-('rc1', 1, 'Low Risk', '0-30', 'Minimal risk requiring standard verification', 'Standard document verification and basic due diligence', NOW(), NOW()),
-('rc2', 2, 'Medium Risk', '31-70', 'Moderate risk requiring enhanced verification', 'Enhanced due diligence, additional documentation, senior approval required', NOW(), NOW()),
-('rc3', 3, 'High Risk', '71-100', 'High risk requiring comprehensive assessment', 'Comprehensive due diligence, management approval, ongoing monitoring', NOW(), NOW());

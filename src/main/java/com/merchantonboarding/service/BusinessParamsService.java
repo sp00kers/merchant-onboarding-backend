@@ -1,20 +1,19 @@
 package com.merchantonboarding.service;
 
-import com.merchantonboarding.dto.BusinessTypeDTO;
-import com.merchantonboarding.dto.MerchantCategoryDTO;
-import com.merchantonboarding.dto.RiskCategoryDTO;
-import com.merchantonboarding.model.BusinessType;
-import com.merchantonboarding.model.MerchantCategory;
-import com.merchantonboarding.model.RiskCategory;
-import com.merchantonboarding.repository.BusinessTypeRepository;
-import com.merchantonboarding.repository.MerchantCategoryRepository;
-import com.merchantonboarding.repository.RiskCategoryRepository;
-import com.merchantonboarding.exception.ResourceNotFoundException;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
-import java.util.stream.Collectors;
+
+import com.merchantonboarding.dto.BusinessTypeDTO;
+import com.merchantonboarding.dto.MerchantCategoryDTO;
+import com.merchantonboarding.exception.ResourceNotFoundException;
+import com.merchantonboarding.model.BusinessType;
+import com.merchantonboarding.model.MerchantCategory;
+import com.merchantonboarding.repository.BusinessTypeRepository;
+import com.merchantonboarding.repository.MerchantCategoryRepository;
 
 @Service
 @Transactional
@@ -25,9 +24,6 @@ public class BusinessParamsService {
 
     @Autowired
     private MerchantCategoryRepository merchantCategoryRepository;
-
-    @Autowired
-    private RiskCategoryRepository riskCategoryRepository;
 
     // ─── Business Types ───────────────────────────────────────
 
@@ -179,59 +175,6 @@ public class BusinessParamsService {
         merchantCategoryRepository.deleteById(id);
     }
 
-    // ─── Risk Categories ───────────────────────────────────────
-
-    public List<RiskCategoryDTO> getAllRiskCategories() {
-        return riskCategoryRepository.findAllByOrderByLevelAsc().stream()
-            .map(this::convertRiskCategoryToDTO)
-            .collect(Collectors.toList());
-    }
-
-    public RiskCategoryDTO getRiskCategoryById(String id) {
-        RiskCategory rc = riskCategoryRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Risk category not found: " + id));
-        return convertRiskCategoryToDTO(rc);
-    }
-
-    public RiskCategoryDTO createRiskCategory(RiskCategoryDTO dto) {
-        // Check for duplicate level
-        if (riskCategoryRepository.findByLevel(dto.getLevel()).isPresent()) {
-            throw new RuntimeException("Risk category level already exists");
-        }
-
-        RiskCategory rc = new RiskCategory();
-        rc.setId(dto.getId() != null ? dto.getId() : "rc_" + System.currentTimeMillis());
-        rc.setLevel(dto.getLevel());
-        rc.setName(dto.getName());
-        rc.setScoreRange(dto.getScoreRange());
-        rc.setDescription(dto.getDescription());
-        rc.setActionsRequired(dto.getActionsRequired());
-
-        RiskCategory saved = riskCategoryRepository.save(rc);
-        return convertRiskCategoryToDTO(saved);
-    }
-
-    public RiskCategoryDTO updateRiskCategory(String id, RiskCategoryDTO dto) {
-        RiskCategory rc = riskCategoryRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Risk category not found: " + id));
-
-        rc.setLevel(dto.getLevel());
-        rc.setName(dto.getName());
-        rc.setScoreRange(dto.getScoreRange());
-        rc.setDescription(dto.getDescription());
-        rc.setActionsRequired(dto.getActionsRequired());
-
-        RiskCategory saved = riskCategoryRepository.save(rc);
-        return convertRiskCategoryToDTO(saved);
-    }
-
-    public void deleteRiskCategory(String id) {
-        if (!riskCategoryRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Risk category not found: " + id);
-        }
-        riskCategoryRepository.deleteById(id);
-    }
-
     // ─── Conversion Methods ───────────────────────────────────────
 
     private BusinessTypeDTO convertBusinessTypeToDTO(BusinessType bt) {
@@ -256,19 +199,6 @@ public class BusinessParamsService {
         dto.setStatus(mc.getStatus());
         dto.setCreatedAt(mc.getCreatedAt() != null ? mc.getCreatedAt().toString() : null);
         dto.setUpdatedAt(mc.getUpdatedAt() != null ? mc.getUpdatedAt().toString() : null);
-        return dto;
-    }
-
-    private RiskCategoryDTO convertRiskCategoryToDTO(RiskCategory rc) {
-        RiskCategoryDTO dto = new RiskCategoryDTO();
-        dto.setId(rc.getId());
-        dto.setLevel(rc.getLevel());
-        dto.setName(rc.getName());
-        dto.setScoreRange(rc.getScoreRange());
-        dto.setDescription(rc.getDescription());
-        dto.setActionsRequired(rc.getActionsRequired());
-        dto.setCreatedAt(rc.getCreatedAt() != null ? rc.getCreatedAt().toString() : null);
-        dto.setUpdatedAt(rc.getUpdatedAt() != null ? rc.getUpdatedAt().toString() : null);
         return dto;
     }
 }

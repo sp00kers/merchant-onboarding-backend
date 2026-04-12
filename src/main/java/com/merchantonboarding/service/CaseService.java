@@ -103,6 +103,58 @@ public class CaseService {
     }
 
     /**
+     * Save case as draft (no notifications, forces Draft status)
+     */
+    @Auditable(action = "SAVE_DRAFT", entityType = "Case")
+    public CaseDTO saveDraft(CaseDTO caseDTO) {
+        caseDTO.setStatus("Draft");
+        OnboardingCase newCase = convertToEntity(caseDTO);
+
+        if (newCase.getCaseId() == null || newCase.getCaseId().isEmpty()) {
+            newCase.setCaseId(generateCaseId());
+        }
+
+        CaseHistory historyEntry = new CaseHistory();
+        historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
+        historyEntry.setAction("Draft case created");
+        historyEntry.setOnboardingCase(newCase);
+        newCase.getHistory().add(historyEntry);
+
+        OnboardingCase savedCase = caseRepository.save(newCase);
+        return convertToDTO(savedCase);
+    }
+
+    /**
+     * Update draft case (no validation, keeps Draft status)
+     */
+    @Auditable(action = "UPDATE_DRAFT", entityType = "Case")
+    public CaseDTO updateDraft(String caseId, CaseDTO caseDTO) {
+        OnboardingCase existingCase = caseRepository.findById(caseId)
+            .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
+
+        existingCase.setBusinessName(caseDTO.getBusinessName());
+        existingCase.setBusinessType(caseDTO.getBusinessType());
+        existingCase.setRegistrationNumber(caseDTO.getRegistrationNumber());
+        existingCase.setMerchantCategory(caseDTO.getMerchantCategory());
+        existingCase.setBusinessAddress(caseDTO.getBusinessAddress());
+        existingCase.setDirectorName(caseDTO.getDirectorName());
+        existingCase.setDirectorIC(caseDTO.getDirectorIC());
+        existingCase.setDirectorPhone(caseDTO.getDirectorPhone());
+        existingCase.setDirectorEmail(caseDTO.getDirectorEmail());
+        existingCase.setAssignedTo(caseDTO.getAssignedTo());
+        existingCase.setLastUpdated(LocalDateTime.now().format(DATETIME_FORMATTER));
+
+        CaseHistory historyEntry = new CaseHistory();
+        historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
+        historyEntry.setAction("Draft case updated");
+        historyEntry.setOnboardingCase(existingCase);
+        existingCase.getHistory().add(historyEntry);
+
+        OnboardingCase updatedCase = caseRepository.save(existingCase);
+        return convertToDTO(updatedCase);
+    }
+
+    /**
      * Get case by ID
      */
     public CaseDTO getCaseById(String caseId) {

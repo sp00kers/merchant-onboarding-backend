@@ -1,15 +1,26 @@
 package com.merchantonboarding.controller;
 
-import com.merchantonboarding.dto.BusinessTypeDTO;
-import com.merchantonboarding.dto.MerchantCategoryDTO;
-import com.merchantonboarding.dto.RiskCategoryDTO;
-import com.merchantonboarding.service.BusinessParamsService;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.merchantonboarding.dto.BusinessTypeDTO;
+import com.merchantonboarding.dto.MerchantCategoryDTO;
+import com.merchantonboarding.service.BusinessParamsService;
+
 import jakarta.validation.Valid;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/business-params")
@@ -103,47 +114,6 @@ public class BusinessParamsController {
     @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<Void> deleteMerchantCategory(@PathVariable String id) {
         businessParamsService.deleteMerchantCategory(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    // ─── Risk Categories ───────────────────────────────────────
-
-    /**
-     * Get all risk categories - read access for risk assessment
-     */
-    @GetMapping("/risk-categories")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('RISK_ASSESSMENT') or hasAuthority('CASE_VIEW') or hasAuthority('ALL_MODULES')")
-    public ResponseEntity<List<RiskCategoryDTO>> getAllRiskCategories() {
-        List<RiskCategoryDTO> categories = businessParamsService.getAllRiskCategories();
-        return ResponseEntity.ok(categories);
-    }
-
-    @GetMapping("/risk-categories/{id}")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('RISK_ASSESSMENT') or hasAuthority('ALL_MODULES')")
-    public ResponseEntity<RiskCategoryDTO> getRiskCategoryById(@PathVariable String id) {
-        RiskCategoryDTO category = businessParamsService.getRiskCategoryById(id);
-        return ResponseEntity.ok(category);
-    }
-
-    @PostMapping("/risk-categories")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('ALL_MODULES')")
-    public ResponseEntity<RiskCategoryDTO> createRiskCategory(@Valid @RequestBody RiskCategoryDTO dto) {
-        RiskCategoryDTO created = businessParamsService.createRiskCategory(dto);
-        return ResponseEntity.ok(created);
-    }
-
-    @PutMapping("/risk-categories/{id}")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('ALL_MODULES')")
-    public ResponseEntity<RiskCategoryDTO> updateRiskCategory(@PathVariable String id,
-                                                              @Valid @RequestBody RiskCategoryDTO dto) {
-        RiskCategoryDTO updated = businessParamsService.updateRiskCategory(id, dto);
-        return ResponseEntity.ok(updated);
-    }
-
-    @DeleteMapping("/risk-categories/{id}")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('ALL_MODULES')")
-    public ResponseEntity<Void> deleteRiskCategory(@PathVariable String id) {
-        businessParamsService.deleteRiskCategory(id);
         return ResponseEntity.noContent().build();
     }
 }
