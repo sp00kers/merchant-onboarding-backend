@@ -13,10 +13,15 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,6 +40,9 @@ public class CaseService {
 
     @Autowired
     private CaseRepository caseRepository;
+
+    @Autowired
+    private com.merchantonboarding.repository.DocumentRepository documentRepository;
 
     @Autowired(required = false)
     private NotificationService notificationService;
@@ -359,6 +367,16 @@ public class CaseService {
         OnboardingCase onboardingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
 
+        // Validate file types before processing
+        List<String> allowedExtensions = List.of(".pdf", ".jpg", ".jpeg", ".png");
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) continue;
+            String originalName = file.getOriginalFilename();
+            if (originalName == null || allowedExtensions.stream().noneMatch(ext -> originalName.toLowerCase().endsWith(ext))) {
+                throw new IllegalArgumentException("Only PDF, JPEG, and PNG file types accepted.");
+            }
+        }
+
         Path uploadDir = Paths.get("uploads", caseId);
         try {
             Files.createDirectories(uploadDir);
@@ -397,6 +415,40 @@ public class CaseService {
 
         OnboardingCase saved = caseRepository.save(onboardingCase);
         return convertToDTO(saved);
+    }
+
+    /**
+     * Download a document by its ID, ensuring it belongs to the specified case.
+     */
+    public ResponseEntity<Resource> downloadDocument(String caseId, Long documentId) {
+        Document document = documentRepository.findById(documentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + documentId));
+
+        // Verify document belongs to the requested case
+        if (!document.getOnboardingCase().getCaseId().equals(caseId)) {
+            throw new ResourceNotFoundException("Document does not belong to case: " + caseId);
+        }
+
+        try {
+            Path filePath = Paths.get(document.getFilePath()).toAbsolutePath().normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists()) {
+                throw new ResourceNotFoundException("File not found on disk: " + document.getName());
+            }
+
+            String contentType = Files.probeContentType(filePath);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.getName() + "\"")
+                .body(resource);
+        } catch (IOException e) {
+            throw new RuntimeException("Error reading file: " + document.getName(), e);
+        }
     }
 
     private String generateCaseId() {
@@ -440,6 +492,7 @@ public class CaseService {
             dto.setDocuments(c.getDocuments().stream()
                 .map(d -> {
                     CaseDTO.DocumentDTO docDTO = new CaseDTO.DocumentDTO();
+                    docDTO.setId(d.getId());
                     docDTO.setName(d.getName());
                     docDTO.setType(d.getType());
                     docDTO.setUploadedAt(d.getUploadedAt());

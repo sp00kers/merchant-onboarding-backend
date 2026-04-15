@@ -248,4 +248,15 @@ public class CaseController {
         CaseDTO updatedCase = caseService.uploadDocuments(caseId, files, types);
         return ResponseEntity.ok(updatedCase);
     }
+
+    /**
+     * Download a document by its ID
+     */
+    @GetMapping("/{caseId}/documents/{documentId}/download")
+    @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadDocument(
+            @PathVariable String caseId,
+            @PathVariable Long documentId) {
+        return caseService.downloadDocument(caseId, documentId);
+    }
 }

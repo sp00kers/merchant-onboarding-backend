@@ -20,6 +20,7 @@ public class CaseDTO {
     private String businessType;
     
     @NotBlank(message = "Registration number is required")
+    @Pattern(regexp = "^[0-9]{12}$", message = "Registration Number must have 12 numbers.")
     private String registrationNumber;
 
     @NotBlank(message = "Merchant category is required")
@@ -51,6 +52,7 @@ public class CaseDTO {
 
     @Data
     public static class DocumentDTO {
+        private Long id;
         private String name;
         private String type;
         private String uploadedAt;
