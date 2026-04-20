@@ -11,25 +11,19 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class VerificationRequestEvent {
+public class ComplianceRequestEvent {
 
     private String caseId;
-    private String verificationType;
+    private String documentType;
     private String externalReference;
 
-    // Business details for verification
     private String businessName;
     private String businessType;
     private String registrationNumber;
     private String businessAddress;
-
-    // Director details
     private String directorName;
-    private String directorIC;
-    private String directorPhone;
-    private String directorEmail;
 
-    // Original filename of the uploaded document being verified
+    // Original filename of the uploaded document being reviewed
     private String documentFileName;
 
     private LocalDateTime requestedAt;

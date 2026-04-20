@@ -58,3 +58,5 @@ services:
       KAFKA_BROKER: kafka:29092
       REQUEST_TOPIC: verification.requests.topic
       RESPONSE_TOPIC: verification.responses.topic
+      COMPLIANCE_REQUEST_TOPIC: compliance.requests.topic
+      COMPLIANCE_RESPONSE_TOPIC: compliance.responses.topic

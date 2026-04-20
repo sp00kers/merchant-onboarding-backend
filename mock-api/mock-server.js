@@ -1,23 +1,24 @@
 /**
- * Mock External Verification API
+ * Mock External Verification & Compliance Review API
  *
- * Simulates external verification agencies (Bank Negara, SSM, CTOS, etc.)
- * by consuming verification request events from Kafka, processing them with
- * realistic mock logic, and publishing verification response events back.
- *
- * Verification types handled:
- *   - BUSINESS_REGISTRY   (SSM / Companies Commission of Malaysia)
- *   - IDENTITY_VERIFICATION (National Registration Department / watchlist)
- *   - ADDRESS_VERIFICATION  (Geocoding / postal verification)
- *   - FINANCIAL_CHECK       (CTOS / credit bureau)
- *   - SANCTIONS_SCREENING   (Bank Negara / UN / OFAC / EU sanctions lists)
+ * Simulates external agencies for:
+ *   1. Background Verification (document-based)
+ *      - BUSINESS_REGISTRATION, DIRECTOR_ID, BENEFICIAL_OWNERSHIP
+ *   2. Compliance Review (document-based)
+ *      - BUSINESS_LICENSE, PCI_DSS_SAQ, TERMS_OF_SERVICE
  */
 
 const { Kafka } = require('kafkajs');
 
 const KAFKA_BROKER = process.env.KAFKA_BROKER || 'kafka:29092';
-const REQUEST_TOPIC = process.env.REQUEST_TOPIC || 'verification.requests.topic';
-const RESPONSE_TOPIC = process.env.RESPONSE_TOPIC || 'verification.responses.topic';
+
+// Background Verification topics
+const VERIFICATION_REQUEST_TOPIC = process.env.REQUEST_TOPIC || 'verification.requests.topic';
+const VERIFICATION_RESPONSE_TOPIC = process.env.RESPONSE_TOPIC || 'verification.responses.topic';
+
+// Compliance Review topics
+const COMPLIANCE_REQUEST_TOPIC = process.env.COMPLIANCE_REQUEST_TOPIC || 'compliance.requests.topic';
+const COMPLIANCE_RESPONSE_TOPIC = process.env.COMPLIANCE_RESPONSE_TOPIC || 'compliance.responses.topic';
 
 const kafka = new Kafka({
   clientId: 'mock-external-api',
@@ -28,156 +29,192 @@ const kafka = new Kafka({
   }
 });
 
-const consumer = kafka.consumer({ groupId: 'mock-external-verification-group' });
+const verificationConsumer = kafka.consumer({ groupId: 'mock-external-verification-group' });
+const complianceConsumer = kafka.consumer({ groupId: 'mock-compliance-review-group' });
 const producer = kafka.producer();
 
 // ---------------------------------------------------------------------------
-// Verification handlers — one per type, replicating the original Java logic
+// Document filename-based outcome detection
+//
+// The uploaded document filename determines pass/fail:
+//   1. No document uploaded                        → FAILED
+//   2. Filename contains failure keyword            → FAILED
+//      (expired, revoked, invalid, refused, suspended, fake)
+//   3. Filename does NOT contain accepted keyword   → FAILED (wrong document)
+//   4. Otherwise                                    → PASSED
 // ---------------------------------------------------------------------------
 
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+const FAILURE_KEYWORDS = ['expired', 'revoked', 'invalid', 'refused', 'suspended', 'fake'];
+
+// Each verification/compliance type requires the filename to contain at least one accepted keyword
+const ACCEPTED_KEYWORDS = {
+  // Background Verification
+  BUSINESS_REGISTRATION: ['business_certificate'],
+  DIRECTOR_ID: ['ic'],
+  BENEFICIAL_OWNERSHIP: ['beneficial_ownership'],
+  // Compliance Review
+  BUSINESS_LICENSE: ['business_license'],
+  PCI_DSS_SAQ: ['pci_dss'],
+  TERMS_OF_SERVICE: ['terms_of_service'],
+};
+
+function isDocumentFailed(filename) {
+  if (!filename) return true; // no document = fail
+  const lower = filename.toLowerCase();
+  return FAILURE_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-function handleBusinessRegistry(request) {
-  const responseData = {
-    registryMatch: true,
-    businessName: request.businessName,
-    registrationNumber: request.registrationNumber,
-    registrationStatus: 'ACTIVE',
-    incorporationDate: '2018-03-15',
-    verifiedBy: 'SSM (Suruhanjaya Syarikat Malaysia)',
-  };
-  const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
+function isWrongDocument(type, filename) {
+  if (!filename) return true;
+  const keywords = ACCEPTED_KEYWORDS[type];
+  if (!keywords) return false; // unknown type — don't block
+  const lower = filename.toLowerCase();
+  return !keywords.some(kw => lower.includes(kw));
+}
 
-  if (request.businessType === 'Bhd') {
-    baseScore += 5;
-  } else if (request.businessType === 'Sole Proprietorship') {
-    baseScore -= 5;
-    riskIndicators.push('Higher risk business structure');
+// ---------------------------------------------------------------------------
+// Background Verification handlers
+// ---------------------------------------------------------------------------
+
+function handleBusinessRegistration(request) {
+  if (isDocumentFailed(request.documentFileName)) {
+    return finalize(35, {
+      registryMatch: false, businessName: request.businessName,
+      registrationNumber: request.registrationNumber, registrationStatus: 'NOT_FOUND',
+      verifiedBy: 'SSM (Suruhanjaya Syarikat Malaysia)',
+    }, ['Business registration document verification failed'], 'Business Registration Certificate verification failed');
   }
-
-  return finalize(baseScore, responseData, riskIndicators, 'Business registry verification completed successfully via SSM');
-}
-
-function handleIdentityVerification(request) {
-  const pepStatus = Math.random() < 0.5 ? 'NOT_PEP' : 'POTENTIAL_PEP';
-  const responseData = {
-    identityVerified: true,
-    directorName: request.directorName,
-    icNumber: request.directorIC,
-    watchlistCheck: 'CLEAR',
-    pepStatus,
-    verifiedBy: 'National Registration Department (JPN)',
-  };
-  const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
-
-  if (pepStatus === 'POTENTIAL_PEP') {
-    baseScore -= 10;
-    riskIndicators.push('Potential Politically Exposed Person (PEP)');
+  if (isWrongDocument('BUSINESS_REGISTRATION', request.documentFileName)) {
+    return finalize(20, {
+      registryMatch: false, businessName: request.businessName,
+      registrationNumber: request.registrationNumber, registrationStatus: 'WRONG_DOCUMENT',
+      verifiedBy: 'SSM (Suruhanjaya Syarikat Malaysia)',
+    }, ['Wrong document type submitted for Business Registration verification'], 'Incorrect document uploaded — expected a Business Registration Certificate');
   }
-
-  return finalize(baseScore, responseData, riskIndicators, 'Identity verification completed via JPN');
+  return finalize(88, {
+    registryMatch: true, businessName: request.businessName,
+    registrationNumber: request.registrationNumber, registrationStatus: 'ACTIVE',
+    incorporationDate: '2018-03-15', verifiedBy: 'SSM (Suruhanjaya Syarikat Malaysia)',
+  }, [], 'Business Registration Certificate verified successfully via SSM');
 }
 
-function handleAddressVerification(request) {
-  const responseData = {
-    addressVerified: true,
-    address: request.businessAddress,
-    addressType: 'COMMERCIAL',
-    geocodeConfidence: 'HIGH',
-    verifiedBy: 'Pos Malaysia Address Verification',
-  };
-  const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
-
-  if (!request.businessAddress || request.businessAddress.length < 20) {
-    baseScore -= 15;
-    riskIndicators.push('Incomplete address information');
+function handleDirectorId(request) {
+  if (isDocumentFailed(request.documentFileName)) {
+    return finalize(30, {
+      identityVerified: false, directorName: request.directorName,
+      icNumber: request.directorIC, documentAuthenticity: 'UNVERIFIED',
+      pepStatus: 'UNKNOWN', verifiedBy: 'National Registration Department (JPN)',
+    }, ['Director identity document could not be verified'], 'Director Government ID verification failed');
   }
-
-  return finalize(baseScore, responseData, riskIndicators, 'Address verification completed');
-}
-
-function handleFinancialCheck(request) {
-  const outstandingLitigation = Math.random() < 0.2;
-  const responseData = {
-    creditScore: randomInt(650, 800),
-    bankruptcyCheck: 'CLEAR',
-    outstandingLitigation,
-    estimatedRevenue: 'RM ' + randomInt(100000, 1000000),
-    verifiedBy: 'CTOS Data Systems',
-  };
-  const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
-
-  if (outstandingLitigation) {
-    baseScore -= 20;
-    riskIndicators.push('Outstanding litigation detected');
+  if (isWrongDocument('DIRECTOR_ID', request.documentFileName)) {
+    return finalize(18, {
+      identityVerified: false, directorName: request.directorName,
+      icNumber: request.directorIC, documentAuthenticity: 'WRONG_DOCUMENT',
+      pepStatus: 'UNKNOWN', verifiedBy: 'National Registration Department (JPN)',
+    }, ['Wrong document type submitted for Director ID verification'], 'Incorrect document uploaded — expected a Director Government ID');
   }
-
-  return finalize(baseScore, responseData, riskIndicators, 'Financial check completed via CTOS');
+  return finalize(90, {
+    identityVerified: true, directorName: request.directorName,
+    icNumber: request.directorIC, documentAuthenticity: 'VERIFIED',
+    pepStatus: 'NOT_PEP', verifiedBy: 'National Registration Department (JPN)',
+  }, [], 'Director Government ID verified via JPN');
 }
 
-function handleSanctionsScreening(request) {
-  const potentialMatch = Math.random() < 0.1; // 10% chance
-  const responseData = {
-    sanctionsMatch: potentialMatch,
-    screenedLists: ['UN Sanctions', 'OFAC SDN', 'EU Sanctions', 'BNM Sanctions'],
-    businessName: request.businessName,
-    directorName: request.directorName,
-    matchScore: potentialMatch ? randomInt(60, 90) : 0,
-    verifiedBy: 'Bank Negara Malaysia (BNM) Sanctions Screening',
-  };
-  const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
-
-  if (potentialMatch) {
-    baseScore -= 30;
-    riskIndicators.push('Potential sanctions list match detected');
-    riskIndicators.push('Manual review required for sanctions clearance');
+function handleBeneficialOwnership(request) {
+  if (isDocumentFailed(request.documentFileName)) {
+    return finalize(32, {
+      declarationReceived: false, businessName: request.businessName,
+      directorName: request.directorName, ownershipStructureVerified: false,
+      verifiedBy: 'SSM Beneficial Ownership Registry',
+    }, ['Beneficial ownership document verification failed'], 'Beneficial Ownership Declaration verification failed');
   }
-
-  return finalize(baseScore, responseData, riskIndicators, 'Sanctions screening completed via BNM');
+  if (isWrongDocument('BENEFICIAL_OWNERSHIP', request.documentFileName)) {
+    return finalize(15, {
+      declarationReceived: false, businessName: request.businessName,
+      directorName: request.directorName, ownershipStructureVerified: false,
+      verifiedBy: 'SSM Beneficial Ownership Registry',
+    }, ['Wrong document type submitted for Beneficial Ownership verification'], 'Incorrect document uploaded — expected a Beneficial Ownership Declaration');
+  }
+  return finalize(87, {
+    declarationReceived: true, businessName: request.businessName,
+    directorName: request.directorName, ownershipStructureVerified: true,
+    verifiedBy: 'SSM Beneficial Ownership Registry',
+  }, [], 'Beneficial Ownership Declaration verified via SSM registry');
 }
 
-function finalize(baseScore, responseData, riskIndicators, notes) {
-  // Apply random variation ±5, clamp to [30, 100]
-  baseScore = Math.max(30, Math.min(100, baseScore + randomInt(-5, 5)));
-  const success = baseScore >= 50;
+function finalize(score, responseData, riskIndicators, notes) {
   return {
-    status: success ? 'COMPLETED' : 'FAILED',
-    confidenceScore: baseScore,
+    status: score >= 50 ? 'PASSED' : 'FAILED',
+    confidenceScore: score,
     responseData: JSON.stringify(responseData),
     riskIndicators: JSON.stringify(riskIndicators),
     notes,
   };
 }
 
-const handlers = {
-  BUSINESS_REGISTRY: handleBusinessRegistry,
-  IDENTITY_VERIFICATION: handleIdentityVerification,
-  ADDRESS_VERIFICATION: handleAddressVerification,
-  FINANCIAL_CHECK: handleFinancialCheck,
-  SANCTIONS_SCREENING: handleSanctionsScreening,
+const verificationHandlers = {
+  BUSINESS_REGISTRATION: handleBusinessRegistration,
+  DIRECTOR_ID: handleDirectorId,
+  BENEFICIAL_OWNERSHIP: handleBeneficialOwnership,
 };
 
 // ---------------------------------------------------------------------------
-// Main processing loop
+// Compliance Review handlers
 // ---------------------------------------------------------------------------
 
-async function processMessage(message) {
-  const request = JSON.parse(message.value.toString());
-  console.log(`[RECEIVED] Verification request — case=${request.caseId} type=${request.verificationType}`);
+function handleBusinessLicense(request) {
+  if (isDocumentFailed(request.documentFileName)) {
+    return { status: 'FAILED', reason: 'Business license document verification failed — document may be expired, revoked, or invalid' };
+  }
+  if (isWrongDocument('BUSINESS_LICENSE', request.documentFileName)) {
+    return { status: 'FAILED', reason: 'Incorrect document uploaded — expected a Business License' };
+  }
+  return { status: 'PASSED', reason: 'Business license verified successfully' };
+}
 
-  // Simulate external agency processing delay (3–5 seconds)
+function handlePciDssSaq(request) {
+  if (isDocumentFailed(request.documentFileName)) {
+    return { status: 'FAILED', reason: 'PCI DSS self-assessment document verification failed — document may be invalid or incomplete' };
+  }
+  if (isWrongDocument('PCI_DSS_SAQ', request.documentFileName)) {
+    return { status: 'FAILED', reason: 'Incorrect document uploaded — expected a PCI DSS Self-Assessment Questionnaire' };
+  }
+  return { status: 'PASSED', reason: 'PCI DSS compliance requirements met' };
+}
+
+function handleTermsOfService(request) {
+  if (isDocumentFailed(request.documentFileName)) {
+    return { status: 'FAILED', reason: 'Terms of Service document verification failed — document may be unsigned or refused' };
+  }
+  if (isWrongDocument('TERMS_OF_SERVICE', request.documentFileName)) {
+    return { status: 'FAILED', reason: 'Incorrect document uploaded — expected a Terms of Service document' };
+  }
+  return { status: 'PASSED', reason: 'Terms of Service accepted and verified' };
+}
+
+const complianceHandlers = {
+  BUSINESS_LICENSE: handleBusinessLicense,
+  PCI_DSS_SAQ: handlePciDssSaq,
+  TERMS_OF_SERVICE: handleTermsOfService,
+};
+
+// ---------------------------------------------------------------------------
+// Message processing
+// ---------------------------------------------------------------------------
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+async function processVerificationMessage(message) {
+  const request = JSON.parse(message.value.toString());
+  console.log(`[VERIFICATION] Received — case=${request.caseId} type=${request.verificationType} file="${request.documentFileName || 'none'}"`);
+
   const delay = randomInt(3000, 5000);
-  console.log(`[PROCESSING] Simulating ${request.verificationType} agency call (${delay}ms)...`);
+  console.log(`[VERIFICATION] Simulating ${request.verificationType} agency call (${delay}ms)...`);
   await new Promise(resolve => setTimeout(resolve, delay));
 
-  const handler = handlers[request.verificationType];
+  const handler = verificationHandlers[request.verificationType];
   if (!handler) {
     console.error(`[ERROR] Unknown verification type: ${request.verificationType}`);
     return;
@@ -198,45 +235,95 @@ async function processMessage(message) {
   };
 
   await producer.send({
-    topic: RESPONSE_TOPIC,
-    messages: [{
-      key: request.caseId,
-      value: JSON.stringify(responseEvent),
-    }],
+    topic: VERIFICATION_RESPONSE_TOPIC,
+    messages: [{ key: request.caseId, value: JSON.stringify(responseEvent) }],
   });
 
-  console.log(`[PUBLISHED] Response for case=${request.caseId} type=${request.verificationType} → status=${result.status} score=${result.confidenceScore}`);
+  console.log(`[VERIFICATION] Published response for case=${request.caseId} type=${request.verificationType} → status=${result.status}`);
 }
+
+async function processComplianceMessage(message) {
+  const request = JSON.parse(message.value.toString());
+  console.log(`[COMPLIANCE] Received — case=${request.caseId} type=${request.documentType} file="${request.documentFileName || 'none'}"`);
+
+  const delay = randomInt(500, 1500);
+  console.log(`[COMPLIANCE] Simulating ${request.documentType} review (${delay}ms)...`);
+  await new Promise(resolve => setTimeout(resolve, delay));
+
+  const handler = complianceHandlers[request.documentType];
+  if (!handler) {
+    console.error(`[ERROR] Unknown compliance document type: ${request.documentType}`);
+    return;
+  }
+
+  const result = handler(request);
+
+  const responseEvent = {
+    caseId: request.caseId,
+    documentType: request.documentType,
+    externalReference: request.externalReference,
+    status: result.status,
+    reason: result.reason,
+    completedAt: new Date().toISOString(),
+  };
+
+  await producer.send({
+    topic: COMPLIANCE_RESPONSE_TOPIC,
+    messages: [{ key: request.caseId, value: JSON.stringify(responseEvent) }],
+  });
+
+  console.log(`[COMPLIANCE] Published response for case=${request.caseId} type=${request.documentType} → status=${result.status}`);
+}
+
+// ---------------------------------------------------------------------------
+// Start
+// ---------------------------------------------------------------------------
 
 async function run() {
   console.log('============================================');
-  console.log(' Mock External Verification API');
+  console.log(' Mock External Verification & Compliance API');
   console.log('============================================');
-  console.log(`Kafka broker : ${KAFKA_BROKER}`);
-  console.log(`Request topic: ${REQUEST_TOPIC}`);
-  console.log(`Response topic: ${RESPONSE_TOPIC}`);
+  console.log(`Kafka broker            : ${KAFKA_BROKER}`);
+  console.log(`Verification request    : ${VERIFICATION_REQUEST_TOPIC}`);
+  console.log(`Verification response   : ${VERIFICATION_RESPONSE_TOPIC}`);
+  console.log(`Compliance request      : ${COMPLIANCE_REQUEST_TOPIC}`);
+  console.log(`Compliance response     : ${COMPLIANCE_RESPONSE_TOPIC}`);
   console.log('');
 
   await producer.connect();
   console.log('[KAFKA] Producer connected');
 
-  await consumer.connect();
-  console.log('[KAFKA] Consumer connected');
+  await verificationConsumer.connect();
+  console.log('[KAFKA] Verification consumer connected');
+  await verificationConsumer.subscribe({ topic: VERIFICATION_REQUEST_TOPIC, fromBeginning: false });
+  console.log(`[KAFKA] Subscribed to ${VERIFICATION_REQUEST_TOPIC}`);
 
-  await consumer.subscribe({ topic: REQUEST_TOPIC, fromBeginning: false });
-  console.log(`[KAFKA] Subscribed to ${REQUEST_TOPIC}`);
+  await complianceConsumer.connect();
+  console.log('[KAFKA] Compliance consumer connected');
+  await complianceConsumer.subscribe({ topic: COMPLIANCE_REQUEST_TOPIC, fromBeginning: false });
+  console.log(`[KAFKA] Subscribed to ${COMPLIANCE_REQUEST_TOPIC}`);
 
-  await consumer.run({
+  await verificationConsumer.run({
     eachMessage: async ({ topic, partition, message }) => {
       try {
-        await processMessage(message);
+        await processVerificationMessage(message);
       } catch (err) {
-        console.error('[ERROR] Failed to process message:', err);
+        console.error('[ERROR] Failed to process verification message:', err);
       }
     },
   });
 
-  console.log('[READY] Waiting for verification requests...');
+  await complianceConsumer.run({
+    eachMessage: async ({ topic, partition, message }) => {
+      try {
+        await processComplianceMessage(message);
+      } catch (err) {
+        console.error('[ERROR] Failed to process compliance message:', err);
+      }
+    },
+  });
+
+  console.log('[READY] Waiting for verification & compliance requests...');
 }
 
 run().catch(err => {

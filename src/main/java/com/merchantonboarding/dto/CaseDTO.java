@@ -43,6 +43,7 @@ public class CaseDTO {
     private String directorEmail;
 
     private String status;
+    private String rejectedAtStage;
     private String createdDate;
     private String assignedTo;
     private String lastUpdated;

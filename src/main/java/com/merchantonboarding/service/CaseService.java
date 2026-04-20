@@ -289,6 +289,11 @@ public class CaseService {
         String oldStatus = onboardingCase.getStatus();
         onboardingCase.setStatus(status);
 
+        // Track which stage the case was rejected at
+        if ("Rejected".equalsIgnoreCase(status)) {
+            onboardingCase.setRejectedAtStage(oldStatus);
+        }
+
         // Add history entry for status change
         CaseHistory historyEntry = new CaseHistory();
         historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
@@ -483,6 +488,7 @@ public class CaseService {
         dto.setDirectorPhone(c.getDirectorPhone());
         dto.setDirectorEmail(c.getDirectorEmail());
         dto.setStatus(c.getStatus());
+        dto.setRejectedAtStage(c.getRejectedAtStage());
         dto.setCreatedDate(c.getCreatedDate());
         dto.setAssignedTo(c.getAssignedTo());
         dto.setLastUpdated(c.getLastUpdated());

@@ -16,9 +16,9 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
-@Table(name = "verification_results")
+@Table(name = "compliance_review_results")
 @Data
-public class VerificationResult {
+public class ComplianceReviewResult {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,23 +28,17 @@ public class VerificationResult {
     @JoinColumn(name = "case_id")
     private OnboardingCase onboardingCase;
 
-    @Column(name = "verification_type", nullable = false, length = 50)
-    private String verificationType; // BUSINESS_REGISTRATION, DIRECTOR_ID, BENEFICIAL_OWNERSHIP
+    @Column(name = "document_type", nullable = false, length = 50)
+    private String documentType; // BUSINESS_LICENSE, PCI_DSS_SAQ, TERMS_OF_SERVICE
 
     @Column(nullable = false, length = 20)
-    private String status; // PENDING, IN_PROGRESS, COMPLETED, FAILED
+    private String status; // PENDING, PASSED, FAILED
 
-    @Column(name = "confidence_score")
-    private Integer confidenceScore; // 0-100
+    @Column(length = 500)
+    private String reason;
 
     @Column(name = "external_reference", length = 100)
     private String externalReference;
-
-    @Column(name = "response_data", columnDefinition = "TEXT")
-    private String responseData; // JSON response from external API
-
-    @Column(name = "risk_indicators", columnDefinition = "TEXT")
-    private String riskIndicators; // JSON array of risk indicators found
 
     @CreationTimestamp
     @Column(name = "requested_at", updatable = false)
@@ -53,9 +47,6 @@ public class VerificationResult {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    @Column(name = "verified_by", length = 50)
-    private String verifiedBy; // System or User ID
-
-    @Column(length = 500)
-    private String notes;
+    @Column(name = "reviewed_by", length = 50)
+    private String reviewedBy;
 }

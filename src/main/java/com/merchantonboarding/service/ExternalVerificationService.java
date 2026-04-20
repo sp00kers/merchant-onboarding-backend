@@ -3,6 +3,7 @@ package com.merchantonboarding.service;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.merchantonboarding.dto.VerificationDTO;
 import com.merchantonboarding.event.VerificationRequestEvent;
 import com.merchantonboarding.exception.ResourceNotFoundException;
+import com.merchantonboarding.model.Document;
 import com.merchantonboarding.model.OnboardingCase;
 import com.merchantonboarding.model.VerificationResult;
 import com.merchantonboarding.repository.CaseRepository;
@@ -40,15 +42,20 @@ public class ExternalVerificationService {
     @Value("${app.kafka.topics.verification-request}")
     private String verificationRequestTopic;
 
-    // Available verification types
-    public static final String TYPE_BUSINESS_REGISTRY = "BUSINESS_REGISTRY";
-    public static final String TYPE_IDENTITY_VERIFICATION = "IDENTITY_VERIFICATION";
-    public static final String TYPE_ADDRESS_VERIFICATION = "ADDRESS_VERIFICATION";
-    public static final String TYPE_FINANCIAL_CHECK = "FINANCIAL_CHECK";
-    public static final String TYPE_SANCTIONS_SCREENING = "SANCTIONS_SCREENING";
+    // Available verification types (aligned with uploaded background verification documents)
+    public static final String TYPE_BUSINESS_REGISTRATION = "BUSINESS_REGISTRATION";
+    public static final String TYPE_DIRECTOR_ID = "DIRECTOR_ID";
+    public static final String TYPE_BENEFICIAL_OWNERSHIP = "BENEFICIAL_OWNERSHIP";
 
     public static final List<String> ALL_VERIFICATION_TYPES = Arrays.asList(
-            TYPE_BUSINESS_REGISTRY, TYPE_IDENTITY_VERIFICATION, TYPE_ADDRESS_VERIFICATION, TYPE_FINANCIAL_CHECK, TYPE_SANCTIONS_SCREENING
+            TYPE_BUSINESS_REGISTRATION, TYPE_DIRECTOR_ID, TYPE_BENEFICIAL_OWNERSHIP
+    );
+
+    // Map verification type → uploaded document type name
+    private static final Map<String, String> VERIFICATION_TO_DOC_TYPE = Map.of(
+            TYPE_BUSINESS_REGISTRATION, "Business Registration Certificate",
+            TYPE_DIRECTOR_ID, "Director Government ID",
+            TYPE_BENEFICIAL_OWNERSHIP, "Beneficial Ownership Declaration"
     );
 
     /**
@@ -58,22 +65,33 @@ public class ExternalVerificationService {
         OnboardingCase onboardingCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Case not found: " + caseId));
 
-        // Check if verification already exists and is pending/in-progress
+        // Check if verification already exists
         Optional<VerificationResult> existing = verificationResultRepository
                 .findByOnboardingCaseCaseIdAndVerificationType(caseId, verificationType);
 
-        if (existing.isPresent() &&
-            ("PENDING".equals(existing.get().getStatus()) || "IN_PROGRESS".equals(existing.get().getStatus()))) {
+        if (existing.isPresent() && "PENDING".equals(existing.get().getStatus())) {
             return convertToDTO(existing.get());
         }
 
-        // Create new verification request
-        VerificationResult verification = new VerificationResult();
-        verification.setOnboardingCase(onboardingCase);
-        verification.setVerificationType(verificationType);
+        VerificationResult verification;
+        if (existing.isPresent()) {
+            // Re-trigger: reset existing record instead of creating a duplicate
+            verification = existing.get();
+            verification.setStatus("PENDING");
+            verification.setConfidenceScore(null);
+            verification.setResponseData(null);
+            verification.setRiskIndicators(null);
+            verification.setNotes(null);
+            verification.setCompletedAt(null);
+        } else {
+            // Create new verification request
+            verification = new VerificationResult();
+            verification.setOnboardingCase(onboardingCase);
+            verification.setVerificationType(verificationType);
+            verification.setVerifiedBy("System");
+        }
         verification.setStatus("PENDING");
         verification.setExternalReference("EXT-" + System.currentTimeMillis());
-        verification.setVerifiedBy("System");
 
         VerificationResult saved = verificationResultRepository.save(verification);
 
@@ -112,7 +130,7 @@ public class ExternalVerificationService {
         VerificationDTO.VerificationSummary summary = new VerificationDTO.VerificationSummary();
         summary.setCaseId(caseId);
         summary.setTotalVerifications(results.size());
-        summary.setCompletedCount((int) results.stream().filter(v -> "COMPLETED".equals(v.getStatus())).count());
+        summary.setCompletedCount((int) results.stream().filter(v -> "PASSED".equals(v.getStatus())).count());
         summary.setPendingCount((int) results.stream().filter(v -> "PENDING".equals(v.getStatus()) || "IN_PROGRESS".equals(v.getStatus())).count());
         summary.setFailedCount((int) results.stream().filter(v -> "FAILED".equals(v.getStatus())).count());
 
@@ -125,7 +143,7 @@ public class ExternalVerificationService {
         } else if (summary.getPendingCount() > 0) {
             summary.setOverallStatus("IN_PROGRESS");
         } else if (summary.getCompletedCount() == ALL_VERIFICATION_TYPES.size()) {
-            summary.setOverallStatus("COMPLETED");
+            summary.setOverallStatus("ALL_PASSED");
         } else {
             summary.setOverallStatus("NOT_STARTED");
         }
@@ -154,6 +172,14 @@ public class ExternalVerificationService {
      * process the verification, and publish the result back to the response topic.
      */
     private void publishVerificationRequest(VerificationResult verification, OnboardingCase caseData) {
+        // Look up the matching uploaded document filename
+        String docTypeName = VERIFICATION_TO_DOC_TYPE.get(verification.getVerificationType());
+        String documentFileName = caseData.getDocuments().stream()
+                .filter(d -> docTypeName != null && docTypeName.equals(d.getType()))
+                .map(Document::getName)
+                .findFirst()
+                .orElse(null);
+
         VerificationRequestEvent event = VerificationRequestEvent.builder()
                 .caseId(caseData.getCaseId())
                 .verificationType(verification.getVerificationType())
@@ -166,6 +192,7 @@ public class ExternalVerificationService {
                 .directorIC(caseData.getDirectorIC())
                 .directorPhone(caseData.getDirectorPhone())
                 .directorEmail(caseData.getDirectorEmail())
+                .documentFileName(documentFileName)
                 .requestedAt(LocalDateTime.now())
                 .build();
 

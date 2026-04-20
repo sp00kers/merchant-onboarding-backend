@@ -56,6 +56,9 @@ public class OnboardingCase {
     @Column(length = 50)
     private String status = "Pending Review";
 
+    @Column(name = "rejected_at_stage", length = 50)
+    private String rejectedAtStage;
+
     @Column(name = "created_date")
     private String createdDate;
 
