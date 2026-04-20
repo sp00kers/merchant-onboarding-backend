@@ -29,5 +29,7 @@ public class VerificationRequestEvent {
     private String directorPhone;
     private String directorEmail;
 
+    private Double ownershipPercentage;
+
     private LocalDateTime requestedAt;
 }

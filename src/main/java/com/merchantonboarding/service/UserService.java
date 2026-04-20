@@ -39,6 +39,9 @@ public class UserService implements UserDetailsService {
     private RoleRepository roleRepository;
 
     @Autowired
+    private com.merchantonboarding.repository.PermissionRepository permissionRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -62,12 +65,22 @@ public class UserService implements UserDetailsService {
         if (user.getRole() != null) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().getId().toUpperCase()));
 
-            // Add all permissions as authorities
+            // Add all role permissions as authorities
             if (user.getRole().getPermissions() != null) {
                 user.getRole().getPermissions().forEach(permission -> {
                     authorities.add(new SimpleGrantedAuthority(permission.getId().toUpperCase()));
                 });
             }
+        }
+
+        // Add user-level custom permissions as authorities
+        if (user.getCustomPermissions() != null) {
+            user.getCustomPermissions().forEach(permission -> {
+                SimpleGrantedAuthority authority = new SimpleGrantedAuthority(permission.getId().toUpperCase());
+                if (!authorities.contains(authority)) {
+                    authorities.add(authority);
+                }
+            });
         }
 
         return org.springframework.security.core.userdetails.User.builder()
@@ -165,6 +178,15 @@ public class UserService implements UserDetailsService {
             existingUser.setRole(role);
         }
 
+        // Update custom permissions
+        if (userDTO.getCustomPermissions() != null) {
+            java.util.Set<Permission> customPerms = new java.util.HashSet<>();
+            for (String permId : userDTO.getCustomPermissions()) {
+                permissionRepository.findById(permId).ifPresent(customPerms::add);
+            }
+            existingUser.setCustomPermissions(customPerms);
+        }
+
         User updatedUser = userRepository.save(existingUser);
         return convertToDTO(updatedUser);
     }
@@ -239,6 +261,14 @@ public class UserService implements UserDetailsService {
                 dto.setPermissions(permissionIds);
             }
             dto.setRole(roleDTO);
+        }
+
+        // Set custom permissions
+        if (user.getCustomPermissions() != null) {
+            Set<String> customPermIds = user.getCustomPermissions().stream()
+                .map(Permission::getId)
+                .collect(Collectors.toSet());
+            dto.setCustomPermissions(customPermIds);
         }
 
         return dto;

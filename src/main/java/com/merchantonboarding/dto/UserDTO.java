@@ -1,8 +1,12 @@
 package com.merchantonboarding.dto;
 
-import jakarta.validation.constraints.*;
-import lombok.Data;
 import java.util.Set;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
 
 @Data
 public class UserDTO {
@@ -37,4 +41,5 @@ public class UserDTO {
     // Role details (for response)
     private RoleDTO role;
     private Set<String> permissions;
+    private Set<String> customPermissions;
 }
