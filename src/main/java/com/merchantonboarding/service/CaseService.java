@@ -149,7 +149,6 @@ public class CaseService {
         existingCase.setDirectorIC(caseDTO.getDirectorIC());
         existingCase.setDirectorPhone(caseDTO.getDirectorPhone());
         existingCase.setDirectorEmail(caseDTO.getDirectorEmail());
-        existingCase.setOwnershipPercentage(caseDTO.getOwnershipPercentage());
         existingCase.setAssignedTo(caseDTO.getAssignedTo());
         existingCase.setLastUpdated(LocalDateTime.now().format(DATETIME_FORMATTER));
 
@@ -199,7 +198,6 @@ public class CaseService {
         existingCase.setDirectorIC(caseDTO.getDirectorIC());
         existingCase.setDirectorPhone(caseDTO.getDirectorPhone());
         existingCase.setDirectorEmail(caseDTO.getDirectorEmail());
-        existingCase.setOwnershipPercentage(caseDTO.getOwnershipPercentage());
         existingCase.setAssignedTo(caseDTO.getAssignedTo());
 
         if (caseDTO.getStatus() != null) {
@@ -366,7 +364,6 @@ public class CaseService {
      * Upload documents for a case
      */
     public CaseDTO uploadDocuments(String caseId, MultipartFile[] files, String[] types) {
-        System.out.println("=== uploadDocuments called for case: " + caseId + ", files: " + files.length + ", types: " + (types != null ? types.length : 0));
         OnboardingCase onboardingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
 
@@ -405,9 +402,7 @@ public class CaseService {
             doc.setName(originalName);
             doc.setType(types != null && i < types.length ? types[i] : file.getContentType());
             doc.setFilePath(filePath.toString());
-            doc.setContentType(file.getContentType());
             doc.setOnboardingCase(onboardingCase);
-            documentRepository.save(doc);
             onboardingCase.getDocuments().add(doc);
         }
 
@@ -439,19 +434,12 @@ public class CaseService {
             Resource resource = new UrlResource(filePath.toUri());
 
             if (!resource.exists()) {
-                // Fallback: restore file from database BLOB
-                if (document.getFileData() != null && document.getFileData().length > 0) {
-                    Files.createDirectories(filePath.getParent());
-                    Files.write(filePath, document.getFileData());
-                    resource = new UrlResource(filePath.toUri());
-                } else {
-                    throw new ResourceNotFoundException("File not found on disk or in database: " + document.getName());
-                }
+                throw new ResourceNotFoundException("File not found on disk: " + document.getName());
             }
 
             String contentType = Files.probeContentType(filePath);
             if (contentType == null) {
-                contentType = document.getContentType() != null ? document.getContentType() : "application/octet-stream";
+                contentType = "application/octet-stream";
             }
 
             return ResponseEntity.ok()
@@ -494,7 +482,6 @@ public class CaseService {
         dto.setDirectorIC(c.getDirectorIC());
         dto.setDirectorPhone(c.getDirectorPhone());
         dto.setDirectorEmail(c.getDirectorEmail());
-        dto.setOwnershipPercentage(c.getOwnershipPercentage());
         dto.setStatus(c.getStatus());
         dto.setCreatedDate(c.getCreatedDate());
         dto.setAssignedTo(c.getAssignedTo());
@@ -541,7 +528,6 @@ public class CaseService {
         c.setDirectorIC(dto.getDirectorIC());
         c.setDirectorPhone(dto.getDirectorPhone());
         c.setDirectorEmail(dto.getDirectorEmail());
-        c.setOwnershipPercentage(dto.getOwnershipPercentage());
         c.setAssignedTo(dto.getAssignedTo());
         c.setStatus(dto.getStatus() != null ? dto.getStatus() : "Pending Review");
         c.setCreatedDate(dto.getCreatedDate() != null ? dto.getCreatedDate() : LocalDateTime.now().format(DATE_FORMATTER));

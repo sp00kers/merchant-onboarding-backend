@@ -216,13 +216,7 @@ public class AuthService {
                     .map(Permission::getId)
                     .collect(Collectors.toSet());
                 roleDTO.setPermissions(permissionIds);
-
-                // Compute effective permissions = role permissions + custom permissions
-                Set<String> effectivePermissions = new java.util.HashSet<>(permissionIds);
-                if (user.getCustomPermissions() != null) {
-                    user.getCustomPermissions().forEach(p -> effectivePermissions.add(p.getId()));
-                }
-                dto.setPermissions(effectivePermissions);
+                dto.setPermissions(permissionIds);
             }
             dto.setRole(roleDTO);
         }
