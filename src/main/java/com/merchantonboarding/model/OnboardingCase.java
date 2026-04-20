@@ -53,6 +53,9 @@ public class OnboardingCase {
     @Column(name = "director_email")
     private String directorEmail;
 
+    @Column(name = "ownership_percentage")
+    private Double ownershipPercentage;
+
     @Column(length = 50)
     private String status = "Pending Review";
 

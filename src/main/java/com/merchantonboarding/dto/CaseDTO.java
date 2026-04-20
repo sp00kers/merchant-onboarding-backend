@@ -42,6 +42,8 @@ public class CaseDTO {
     @Email(message = "Email should be valid")
     private String directorEmail;
 
+    private Double ownershipPercentage;
+
     private String status;
     private String createdDate;
     private String assignedTo;
