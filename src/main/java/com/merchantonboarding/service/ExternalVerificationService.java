@@ -41,12 +41,14 @@ public class ExternalVerificationService {
     private String verificationRequestTopic;
 
     // Available verification types
-    public static final String TYPE_BUSINESS_REGISTRATION = "BUSINESS_REGISTRATION";
-    public static final String TYPE_DIRECTOR_ID = "DIRECTOR_ID";
-    public static final String TYPE_BENEFICIAL_OWNERSHIP = "BENEFICIAL_OWNERSHIP";
+    public static final String TYPE_BUSINESS_REGISTRY = "BUSINESS_REGISTRY";
+    public static final String TYPE_IDENTITY_VERIFICATION = "IDENTITY_VERIFICATION";
+    public static final String TYPE_ADDRESS_VERIFICATION = "ADDRESS_VERIFICATION";
+    public static final String TYPE_FINANCIAL_CHECK = "FINANCIAL_CHECK";
+    public static final String TYPE_SANCTIONS_SCREENING = "SANCTIONS_SCREENING";
 
     public static final List<String> ALL_VERIFICATION_TYPES = Arrays.asList(
-            TYPE_BUSINESS_REGISTRATION, TYPE_DIRECTOR_ID, TYPE_BENEFICIAL_OWNERSHIP
+            TYPE_BUSINESS_REGISTRY, TYPE_IDENTITY_VERIFICATION, TYPE_ADDRESS_VERIFICATION, TYPE_FINANCIAL_CHECK, TYPE_SANCTIONS_SCREENING
     );
 
     /**
@@ -56,37 +58,22 @@ public class ExternalVerificationService {
         OnboardingCase onboardingCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Case not found: " + caseId));
 
-        // Check if verification already exists
+        // Check if verification already exists and is pending/in-progress
         Optional<VerificationResult> existing = verificationResultRepository
                 .findByOnboardingCaseCaseIdAndVerificationType(caseId, verificationType);
 
         if (existing.isPresent() &&
             ("PENDING".equals(existing.get().getStatus()) || "IN_PROGRESS".equals(existing.get().getStatus()))) {
-            // Already in progress — return as-is, no duplicate request
             return convertToDTO(existing.get());
         }
 
-        VerificationResult verification;
-
-        if (existing.isPresent()) {
-            // Recheck: reset existing row instead of creating a duplicate
-            verification = existing.get();
-            verification.setStatus("PENDING");
-            verification.setExternalReference("EXT-" + System.currentTimeMillis());
-            verification.setConfidenceScore(null);
-            verification.setResponseData(null);
-            verification.setRiskIndicators(null);
-            verification.setCompletedAt(null);
-            verification.setNotes(null);
-        } else {
-            // First-time trigger: create new row
-            verification = new VerificationResult();
-            verification.setOnboardingCase(onboardingCase);
-            verification.setVerificationType(verificationType);
-            verification.setStatus("PENDING");
-            verification.setExternalReference("EXT-" + System.currentTimeMillis());
-            verification.setVerifiedBy("System");
-        }
+        // Create new verification request
+        VerificationResult verification = new VerificationResult();
+        verification.setOnboardingCase(onboardingCase);
+        verification.setVerificationType(verificationType);
+        verification.setStatus("PENDING");
+        verification.setExternalReference("EXT-" + System.currentTimeMillis());
+        verification.setVerifiedBy("System");
 
         VerificationResult saved = verificationResultRepository.save(verification);
 
@@ -125,9 +112,12 @@ public class ExternalVerificationService {
         VerificationDTO.VerificationSummary summary = new VerificationDTO.VerificationSummary();
         summary.setCaseId(caseId);
         summary.setTotalVerifications(results.size());
-        summary.setCompletedCount((int) results.stream().filter(v -> "PASSED".equals(v.getStatus())).count());
+        summary.setCompletedCount((int) results.stream().filter(v -> "COMPLETED".equals(v.getStatus())).count());
         summary.setPendingCount((int) results.stream().filter(v -> "PENDING".equals(v.getStatus()) || "IN_PROGRESS".equals(v.getStatus())).count());
         summary.setFailedCount((int) results.stream().filter(v -> "FAILED".equals(v.getStatus())).count());
+
+        // Calculate average confidence score for recommendation
+        Double avgScore = verificationResultRepository.getAverageConfidenceScoreByCaseId(caseId);
 
         // Determine overall status
         if (summary.getFailedCount() > 0) {
@@ -135,18 +125,22 @@ public class ExternalVerificationService {
         } else if (summary.getPendingCount() > 0) {
             summary.setOverallStatus("IN_PROGRESS");
         } else if (summary.getCompletedCount() == ALL_VERIFICATION_TYPES.size()) {
-            summary.setOverallStatus("ALL_PASSED");
+            summary.setOverallStatus("COMPLETED");
         } else {
             summary.setOverallStatus("NOT_STARTED");
         }
 
-        // Recommendation based on pass/fail
-        if (summary.getCompletedCount() == ALL_VERIFICATION_TYPES.size()) {
-            summary.setRecommendation("APPROVE");
-        } else if (summary.getFailedCount() > 0) {
-            summary.setRecommendation("REJECTION_RECOMMENDED");
-        } else if (summary.getPendingCount() > 0) {
-            summary.setRecommendation("PENDING_VERIFICATION");
+        // Determine recommendation based on average score
+        if (avgScore != null) {
+            if (avgScore >= 90) {
+                summary.setRecommendation("AUTO_APPROVE");
+            } else if (avgScore >= 70) {
+                summary.setRecommendation("MANUAL_REVIEW");
+            } else if (avgScore >= 50) {
+                summary.setRecommendation("ENHANCED_DUE_DILIGENCE");
+            } else {
+                summary.setRecommendation("REJECTION_RECOMMENDED");
+            }
         } else {
             summary.setRecommendation("PENDING_VERIFICATION");
         }
@@ -172,7 +166,6 @@ public class ExternalVerificationService {
                 .directorIC(caseData.getDirectorIC())
                 .directorPhone(caseData.getDirectorPhone())
                 .directorEmail(caseData.getDirectorEmail())
-                .ownershipPercentage(caseData.getOwnershipPercentage())
                 .requestedAt(LocalDateTime.now())
                 .build();
 

@@ -11,7 +11,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import jakarta.validation.ConstraintViolationException;
 
@@ -21,20 +20,6 @@ import jakarta.validation.ConstraintViolationException;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    /**
-     * Handle file upload size exceeded
-     */
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
-            MaxUploadSizeExceededException ex) {
-        ErrorResponse errorResponse = new ErrorResponse();
-        errorResponse.setMessage("File upload too large. Maximum file size is 10MB per file, 60MB total.");
-        errorResponse.setStatus(HttpStatus.PAYLOAD_TOO_LARGE.value());
-        errorResponse.setTimestamp(LocalDateTime.now());
-        errorResponse.setErrors(null);
-        return new ResponseEntity<>(errorResponse, HttpStatus.PAYLOAD_TOO_LARGE);
-    }
     
     /**
      * Handle validation errors from request body
