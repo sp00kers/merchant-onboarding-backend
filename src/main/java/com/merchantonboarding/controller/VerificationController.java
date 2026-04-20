@@ -72,9 +72,11 @@ public class VerificationController {
     @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'ALL_MODULES')")
     public ResponseEntity<List<Map<String, String>>> getVerificationTypes() {
         List<Map<String, String>> types = List.of(
-            Map.of("code", "BUSINESS_REGISTRATION", "name", "Business Registration Certificate", "description", "Verify business registration with SSM"),
-            Map.of("code", "DIRECTOR_ID", "name", "Director Government ID", "description", "Verify director identity via JPN"),
-            Map.of("code", "BENEFICIAL_OWNERSHIP", "name", "Beneficial Ownership Declaration", "description", "Verify beneficial ownership and sanctions screening")
+            Map.of("code", "BUSINESS_REGISTRY", "name", "Business Registry", "description", "Verify business registration with SSM"),
+            Map.of("code", "IDENTITY_VERIFICATION", "name", "Identity Verification", "description", "Verify director identity and conduct watchlist check"),
+            Map.of("code", "ADDRESS_VERIFICATION", "name", "Address Verification", "description", "Verify business address existence"),
+            Map.of("code", "FINANCIAL_CHECK", "name", "Financial Check", "description", "Credit score and litigation check"),
+            Map.of("code", "SANCTIONS_SCREENING", "name", "Sanctions Screening", "description", "Screen against global sanctions and watchlists")
         );
         return ResponseEntity.ok(types);
     }

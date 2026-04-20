@@ -19,15 +19,15 @@ public interface VerificationResultRepository extends JpaRepository<Verification
 
     List<VerificationResult> findByStatus(String status);
 
-    @Query("SELECT v FROM VerificationResult v WHERE v.onboardingCase.caseId = :caseId AND v.status = 'PASSED'")
+    @Query("SELECT v FROM VerificationResult v WHERE v.onboardingCase.caseId = :caseId AND v.status = 'COMPLETED'")
     List<VerificationResult> findCompletedVerificationsByCaseId(@Param("caseId") String caseId);
 
-    @Query("SELECT AVG(v.confidenceScore) FROM VerificationResult v WHERE v.onboardingCase.caseId = :caseId AND v.status = 'PASSED'")
+    @Query("SELECT AVG(v.confidenceScore) FROM VerificationResult v WHERE v.onboardingCase.caseId = :caseId AND v.status = 'COMPLETED'")
     Double getAverageConfidenceScoreByCaseId(@Param("caseId") String caseId);
 
     @Query("SELECT COUNT(v) FROM VerificationResult v WHERE v.onboardingCase.caseId = :caseId AND v.status = 'PENDING'")
     long countPendingVerificationsByCaseId(@Param("caseId") String caseId);
 
-    @Query("SELECT COUNT(v) FROM VerificationResult v WHERE v.onboardingCase.caseId = :caseId AND v.status = 'PASSED'")
+    @Query("SELECT COUNT(v) FROM VerificationResult v WHERE v.onboardingCase.caseId = :caseId AND v.status = 'COMPLETED'")
     long countCompletedVerificationsByCaseId(@Param("caseId") String caseId);
 }
