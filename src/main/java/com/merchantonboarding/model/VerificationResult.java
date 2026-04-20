@@ -29,10 +29,10 @@ public class VerificationResult {
     private OnboardingCase onboardingCase;
 
     @Column(name = "verification_type", nullable = false, length = 50)
-    private String verificationType; // BUSINESS_REGISTRY, IDENTITY_VERIFICATION, ADDRESS_VERIFICATION, FINANCIAL_CHECK, SANCTIONS_SCREENING
+    private String verificationType; // BUSINESS_REGISTRATION, DIRECTOR_ID, BENEFICIAL_OWNERSHIP
 
     @Column(nullable = false, length = 20)
-    private String status; // PENDING, IN_PROGRESS, COMPLETED, FAILED
+    private String status; // PENDING, IN_PROGRESS, PASSED, FAILED
 
     @Column(name = "confidence_score")
     private Integer confidenceScore; // 0-100

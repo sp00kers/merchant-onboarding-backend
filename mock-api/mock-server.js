@@ -1,16 +1,20 @@
 /**
  * Mock External Verification API
  *
- * Simulates external verification agencies (Bank Negara, SSM, CTOS, etc.)
- * by consuming verification request events from Kafka, processing them with
- * realistic mock logic, and publishing verification response events back.
+ * Simulates external verification agencies by consuming verification request
+ * events from Kafka, processing them with deterministic keyword-based logic,
+ * and publishing verification response events back.
  *
  * Verification types handled:
- *   - BUSINESS_REGISTRY   (SSM / Companies Commission of Malaysia)
- *   - IDENTITY_VERIFICATION (National Registration Department / watchlist)
- *   - ADDRESS_VERIFICATION  (Geocoding / postal verification)
- *   - FINANCIAL_CHECK       (CTOS / credit bureau)
- *   - SANCTIONS_SCREENING   (Bank Negara / UN / OFAC / EU sanctions lists)
+ *   - BUSINESS_REGISTRATION  (Business Registration Certificate)
+ *   - DIRECTOR_ID            (Director Government ID)
+ *   - BENEFICIAL_OWNERSHIP   (Beneficial Ownership Declaration)
+ *
+ * Deterministic keyword triggers:
+ *   BUSINESS_REGISTRATION — registrationNumber starting with "INVALID" or "EXPIRED" → FAILED
+ *   DIRECTOR_ID           — directorIC starting with "BLOCK" or "FAKE" → FAILED
+ *   BENEFICIAL_OWNERSHIP  — directorName containing "SANCTIONED", or ownershipPercentage > 100 or <= 0 → FAILED
+ *   Any blank required field for a given type → FAILED
  */
 
 const { Kafka } = require('kafkajs');
@@ -32,124 +36,148 @@ const consumer = kafka.consumer({ groupId: 'mock-external-verification-group' })
 const producer = kafka.producer();
 
 // ---------------------------------------------------------------------------
-// Verification handlers — one per type, replicating the original Java logic
+// Helper
 // ---------------------------------------------------------------------------
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function handleBusinessRegistry(request) {
+function isBlank(value) {
+  return value === null || value === undefined || String(value).trim() === '';
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic verification handlers
+// ---------------------------------------------------------------------------
+
+function handleBusinessRegistration(request) {
+  const regNum = (request.registrationNumber || '').trim();
+  const bizName = (request.businessName || '').trim();
+
   const responseData = {
     registryMatch: true,
-    businessName: request.businessName,
-    registrationNumber: request.registrationNumber,
+    businessName: bizName,
+    registrationNumber: regNum,
     registrationStatus: 'ACTIVE',
-    incorporationDate: '2018-03-15',
     verifiedBy: 'SSM (Suruhanjaya Syarikat Malaysia)',
   };
   const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
 
-  if (request.businessType === 'Bhd') {
-    baseScore += 5;
-  } else if (request.businessType === 'Sole Proprietorship') {
-    baseScore -= 5;
-    riskIndicators.push('Higher risk business structure');
+  // Blank required fields
+  if (isBlank(regNum)) {
+    riskIndicators.push('Registration number is blank');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Business registration verification failed — missing registration number');
+  }
+  if (isBlank(bizName)) {
+    riskIndicators.push('Business name is blank');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Business registration verification failed — missing business name');
   }
 
-  return finalize(baseScore, responseData, riskIndicators, 'Business registry verification completed successfully via SSM');
+  // Keyword triggers
+  const upper = regNum.toUpperCase();
+  if (upper.startsWith('INVALID')) {
+    responseData.registrationStatus = 'INVALID';
+    responseData.registryMatch = false;
+    riskIndicators.push('Registration number flagged as INVALID');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Business registration verification failed — invalid registration number');
+  }
+  if (upper.startsWith('EXPIRED')) {
+    responseData.registrationStatus = 'EXPIRED';
+    riskIndicators.push('Registration number flagged as EXPIRED');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Business registration verification failed — expired registration');
+  }
+
+  // All good
+  return buildResult('PASSED', 100, responseData, riskIndicators, 'Business registration verification passed — registration is active and valid');
 }
 
-function handleIdentityVerification(request) {
-  const pepStatus = Math.random() < 0.5 ? 'NOT_PEP' : 'POTENTIAL_PEP';
+function handleDirectorId(request) {
+  const ic = (request.directorIC || '').trim();
+  const dirName = (request.directorName || '').trim();
+
   const responseData = {
     identityVerified: true,
-    directorName: request.directorName,
-    icNumber: request.directorIC,
+    directorName: dirName,
+    icNumber: ic,
     watchlistCheck: 'CLEAR',
-    pepStatus,
     verifiedBy: 'National Registration Department (JPN)',
   };
   const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
 
-  if (pepStatus === 'POTENTIAL_PEP') {
-    baseScore -= 10;
-    riskIndicators.push('Potential Politically Exposed Person (PEP)');
+  // Blank required fields
+  if (isBlank(ic)) {
+    riskIndicators.push('Director IC number is blank');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Director ID verification failed — missing IC number');
+  }
+  if (isBlank(dirName)) {
+    riskIndicators.push('Director name is blank');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Director ID verification failed — missing director name');
   }
 
-  return finalize(baseScore, responseData, riskIndicators, 'Identity verification completed via JPN');
+  // Keyword triggers
+  const upper = ic.toUpperCase();
+  if (upper.startsWith('BLOCK')) {
+    responseData.identityVerified = false;
+    responseData.watchlistCheck = 'BLOCKED';
+    riskIndicators.push('Director IC is on the blocked list');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Director ID verification failed — IC number is blocked');
+  }
+  if (upper.startsWith('FAKE')) {
+    responseData.identityVerified = false;
+    riskIndicators.push('Director IC flagged as potentially fraudulent');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Director ID verification failed — IC number appears fraudulent');
+  }
+
+  // All good
+  return buildResult('PASSED', 100, responseData, riskIndicators, 'Director ID verification passed — identity confirmed');
 }
 
-function handleAddressVerification(request) {
+function handleBeneficialOwnership(request) {
+  const dirName = (request.directorName || '').trim();
+  const ownership = request.ownershipPercentage;
+
   const responseData = {
-    addressVerified: true,
-    address: request.businessAddress,
-    addressType: 'COMMERCIAL',
-    geocodeConfidence: 'HIGH',
-    verifiedBy: 'Pos Malaysia Address Verification',
+    directorName: dirName,
+    ownershipPercentage: ownership,
+    sanctionsCheck: 'CLEAR',
+    verifiedBy: 'Bank Negara Malaysia (BNM)',
   };
   const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
 
-  if (!request.businessAddress || request.businessAddress.length < 20) {
-    baseScore -= 15;
-    riskIndicators.push('Incomplete address information');
+  // Blank required fields
+  if (isBlank(dirName)) {
+    riskIndicators.push('Director name is blank');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Beneficial ownership verification failed — missing director name');
   }
 
-  return finalize(baseScore, responseData, riskIndicators, 'Address verification completed');
-}
-
-function handleFinancialCheck(request) {
-  const outstandingLitigation = Math.random() < 0.2;
-  const responseData = {
-    creditScore: randomInt(650, 800),
-    bankruptcyCheck: 'CLEAR',
-    outstandingLitigation,
-    estimatedRevenue: 'RM ' + randomInt(100000, 1000000),
-    verifiedBy: 'CTOS Data Systems',
-  };
-  const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
-
-  if (outstandingLitigation) {
-    baseScore -= 20;
-    riskIndicators.push('Outstanding litigation detected');
+  // Keyword triggers
+  if (dirName.toUpperCase().includes('SANCTIONED')) {
+    responseData.sanctionsCheck = 'MATCH';
+    riskIndicators.push('Director name matched sanctions list');
+    return buildResult('FAILED', 0, responseData, riskIndicators, 'Beneficial ownership verification failed — director is on sanctions list');
   }
 
-  return finalize(baseScore, responseData, riskIndicators, 'Financial check completed via CTOS');
-}
-
-function handleSanctionsScreening(request) {
-  const potentialMatch = Math.random() < 0.1; // 10% chance
-  const responseData = {
-    sanctionsMatch: potentialMatch,
-    screenedLists: ['UN Sanctions', 'OFAC SDN', 'EU Sanctions', 'BNM Sanctions'],
-    businessName: request.businessName,
-    directorName: request.directorName,
-    matchScore: potentialMatch ? randomInt(60, 90) : 0,
-    verifiedBy: 'Bank Negara Malaysia (BNM) Sanctions Screening',
-  };
-  const riskIndicators = [];
-  let baseScore = randomInt(70, 94);
-
-  if (potentialMatch) {
-    baseScore -= 30;
-    riskIndicators.push('Potential sanctions list match detected');
-    riskIndicators.push('Manual review required for sanctions clearance');
+  // Ownership percentage checks
+  if (ownership !== null && ownership !== undefined) {
+    if (ownership > 100) {
+      riskIndicators.push('Ownership percentage exceeds 100%');
+      return buildResult('FAILED', 0, responseData, riskIndicators, 'Beneficial ownership verification failed — ownership percentage exceeds 100%');
+    }
+    if (ownership <= 0) {
+      riskIndicators.push('Ownership percentage is zero or negative');
+      return buildResult('FAILED', 0, responseData, riskIndicators, 'Beneficial ownership verification failed — ownership percentage must be positive');
+    }
   }
 
-  return finalize(baseScore, responseData, riskIndicators, 'Sanctions screening completed via BNM');
+  // All good
+  return buildResult('PASSED', 100, responseData, riskIndicators, 'Beneficial ownership verification passed — no issues found');
 }
 
-function finalize(baseScore, responseData, riskIndicators, notes) {
-  // Apply random variation ±5, clamp to [30, 100]
-  baseScore = Math.max(30, Math.min(100, baseScore + randomInt(-5, 5)));
-  const success = baseScore >= 50;
+function buildResult(status, confidenceScore, responseData, riskIndicators, notes) {
   return {
-    status: success ? 'COMPLETED' : 'FAILED',
-    confidenceScore: baseScore,
+    status,
+    confidenceScore,
     responseData: JSON.stringify(responseData),
     riskIndicators: JSON.stringify(riskIndicators),
     notes,
@@ -157,11 +185,9 @@ function finalize(baseScore, responseData, riskIndicators, notes) {
 }
 
 const handlers = {
-  BUSINESS_REGISTRY: handleBusinessRegistry,
-  IDENTITY_VERIFICATION: handleIdentityVerification,
-  ADDRESS_VERIFICATION: handleAddressVerification,
-  FINANCIAL_CHECK: handleFinancialCheck,
-  SANCTIONS_SCREENING: handleSanctionsScreening,
+  BUSINESS_REGISTRATION: handleBusinessRegistration,
+  DIRECTOR_ID: handleDirectorId,
+  BENEFICIAL_OWNERSHIP: handleBeneficialOwnership,
 };
 
 // ---------------------------------------------------------------------------
@@ -172,8 +198,8 @@ async function processMessage(message) {
   const request = JSON.parse(message.value.toString());
   console.log(`[RECEIVED] Verification request — case=${request.caseId} type=${request.verificationType}`);
 
-  // Simulate external agency processing delay (3–5 seconds)
-  const delay = randomInt(3000, 5000);
+  // Simulate external agency processing delay (500ms – 2s)
+  const delay = randomInt(500, 2000);
   console.log(`[PROCESSING] Simulating ${request.verificationType} agency call (${delay}ms)...`);
   await new Promise(resolve => setTimeout(resolve, delay));
 
@@ -194,7 +220,7 @@ async function processMessage(message) {
     responseData: result.responseData,
     riskIndicators: result.riskIndicators,
     notes: result.notes,
-    completedAt: new Date().toISOString(),
+    completedAt: new Date().toISOString().replace('Z', ''),
   };
 
   await producer.send({
@@ -205,7 +231,7 @@ async function processMessage(message) {
     }],
   });
 
-  console.log(`[PUBLISHED] Response for case=${request.caseId} type=${request.verificationType} → status=${result.status} score=${result.confidenceScore}`);
+  console.log(`[PUBLISHED] Response for case=${request.caseId} type=${request.verificationType} → status=${result.status}`);
 }
 
 async function run() {

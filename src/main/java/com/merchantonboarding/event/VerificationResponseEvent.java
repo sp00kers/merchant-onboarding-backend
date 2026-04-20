@@ -17,7 +17,7 @@ public class VerificationResponseEvent {
     private String verificationType;
     private String externalReference;
 
-    private String status; // COMPLETED or FAILED
+    private String status; // PASSED or FAILED
     private int confidenceScore;
     private String responseData; // JSON string
     private String riskIndicators; // JSON array string
