@@ -25,6 +25,7 @@ import com.merchantonboarding.exception.ResourceNotFoundException;
 import com.merchantonboarding.model.Permission;
 import com.merchantonboarding.model.Role;
 import com.merchantonboarding.model.User;
+import com.merchantonboarding.repository.PermissionRepository;
 import com.merchantonboarding.repository.RoleRepository;
 import com.merchantonboarding.repository.UserRepository;
 
@@ -37,6 +38,9 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     private RoleRepository roleRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -55,20 +59,33 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
-        // Build authorities list with role and permissions
+        // Build authorities list with role permissions + custom user permissions
         List<SimpleGrantedAuthority> authorities = new java.util.ArrayList<>();
+        Set<String> allPermissionIds = new java.util.HashSet<>();
 
         // Add role authority (prefixed with ROLE_)
         if (user.getRole() != null) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().getId().toUpperCase()));
 
-            // Add all permissions as authorities
+            // Add all role permissions
             if (user.getRole().getPermissions() != null) {
                 user.getRole().getPermissions().forEach(permission -> {
-                    authorities.add(new SimpleGrantedAuthority(permission.getId().toUpperCase()));
+                    allPermissionIds.add(permission.getId().toUpperCase());
                 });
             }
         }
+
+        // Add custom user-level permissions (additive on top of role)
+        if (user.getCustomPermissions() != null) {
+            user.getCustomPermissions().forEach(permission -> {
+                allPermissionIds.add(permission.getId().toUpperCase());
+            });
+        }
+
+        // Convert all unique permissions to authorities
+        allPermissionIds.forEach(permId -> {
+            authorities.add(new SimpleGrantedAuthority(permId));
+        });
 
         return org.springframework.security.core.userdetails.User.builder()
             .username(user.getEmail())
@@ -165,6 +182,15 @@ public class UserService implements UserDetailsService {
             existingUser.setRole(role);
         }
 
+        // Update custom permissions
+        if (userDTO.getCustomPermissions() != null) {
+            Set<Permission> customPerms = userDTO.getCustomPermissions().stream()
+                .map(permId -> permissionRepository.findById(permId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Permission not found: " + permId)))
+                .collect(Collectors.toSet());
+            existingUser.setCustomPermissions(customPerms);
+        }
+
         User updatedUser = userRepository.save(existingUser);
         return convertToDTO(updatedUser);
     }
@@ -209,6 +235,15 @@ public class UserService implements UserDetailsService {
         return convertToDTO(updatedUser);
     }
 
+    /**
+     * Get current authenticated user's fresh data from DB
+     */
+    public UserDTO getCurrentUser(String email) {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
+        return convertToDTO(user);
+    }
+
     private UserDTO convertToDTO(User user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
@@ -223,6 +258,9 @@ public class UserService implements UserDetailsService {
         dto.setNotes(user.getNotes());
         dto.setCreatedAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null);
 
+        // Collect effective permissions = role permissions UNION custom permissions
+        Set<String> effectivePermissions = new java.util.HashSet<>();
+
         // Set role details
         if (user.getRole() != null) {
             RoleDTO roleDTO = new RoleDTO();
@@ -232,14 +270,26 @@ public class UserService implements UserDetailsService {
             roleDTO.setActive(user.getRole().isActive());
 
             if (user.getRole().getPermissions() != null) {
-                Set<String> permissionIds = user.getRole().getPermissions().stream()
+                Set<String> rolePermissionIds = user.getRole().getPermissions().stream()
                     .map(Permission::getId)
                     .collect(Collectors.toSet());
-                roleDTO.setPermissions(permissionIds);
-                dto.setPermissions(permissionIds);
+                roleDTO.setPermissions(rolePermissionIds);
+                effectivePermissions.addAll(rolePermissionIds);
             }
             dto.setRole(roleDTO);
         }
+
+        // Add custom user-level permissions (additive)
+        if (user.getCustomPermissions() != null && !user.getCustomPermissions().isEmpty()) {
+            Set<String> customPermIds = user.getCustomPermissions().stream()
+                .map(Permission::getId)
+                .collect(Collectors.toSet());
+            dto.setCustomPermissions(customPermIds);
+            effectivePermissions.addAll(customPermIds);
+        }
+
+        // Set effective (merged) permissions
+        dto.setPermissions(effectivePermissions);
 
         return dto;
     }

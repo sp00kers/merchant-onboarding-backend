@@ -27,7 +27,7 @@ public class VerificationController {
      * Trigger all verification types for a case
      */
     @PostMapping("/trigger/{caseId}")
-    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'EXTERNAL_API_ACCESS', 'ALL_MODULES')")
     public ResponseEntity<List<VerificationDTO>> triggerAllVerifications(@PathVariable String caseId) {
         List<VerificationDTO> results = verificationService.triggerAllVerifications(caseId);
         return ResponseEntity.ok(results);
@@ -37,7 +37,7 @@ public class VerificationController {
      * Trigger a specific verification type for a case
      */
     @PostMapping("/trigger/{caseId}/{verificationType}")
-    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'EXTERNAL_API_ACCESS', 'ALL_MODULES')")
     public ResponseEntity<VerificationDTO> triggerVerification(
             @PathVariable String caseId,
             @PathVariable String verificationType) {

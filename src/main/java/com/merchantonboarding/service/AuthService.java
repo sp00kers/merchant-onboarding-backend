@@ -202,6 +202,9 @@ public class AuthService {
         dto.setNotes(user.getNotes());
         dto.setCreatedAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null);
 
+        // Collect effective permissions = role permissions UNION custom permissions
+        Set<String> effectivePermissions = new java.util.HashSet<>();
+
         // Set role details
         if (user.getRole() != null) {
             RoleDTO roleDTO = new RoleDTO();
@@ -212,14 +215,26 @@ public class AuthService {
 
             // Set permissions
             if (user.getRole().getPermissions() != null) {
-                Set<String> permissionIds = user.getRole().getPermissions().stream()
+                Set<String> rolePermissionIds = user.getRole().getPermissions().stream()
                     .map(Permission::getId)
                     .collect(Collectors.toSet());
-                roleDTO.setPermissions(permissionIds);
-                dto.setPermissions(permissionIds);
+                roleDTO.setPermissions(rolePermissionIds);
+                effectivePermissions.addAll(rolePermissionIds);
             }
             dto.setRole(roleDTO);
         }
+
+        // Add custom user-level permissions (additive)
+        if (user.getCustomPermissions() != null && !user.getCustomPermissions().isEmpty()) {
+            Set<String> customPermIds = user.getCustomPermissions().stream()
+                .map(Permission::getId)
+                .collect(Collectors.toSet());
+            dto.setCustomPermissions(customPermIds);
+            effectivePermissions.addAll(customPermIds);
+        }
+
+        // Set effective (merged) permissions
+        dto.setPermissions(effectivePermissions);
 
         return dto;
     }

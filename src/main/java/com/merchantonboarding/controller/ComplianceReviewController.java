@@ -22,14 +22,14 @@ public class ComplianceReviewController {
     private ComplianceReviewService complianceReviewService;
 
     @PostMapping("/trigger/{caseId}")
-    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'RISK_ASSESSMENT', 'ALL_MODULES')")
     public ResponseEntity<List<ComplianceReviewDTO>> triggerAllReviews(@PathVariable String caseId) {
         List<ComplianceReviewDTO> results = complianceReviewService.triggerAllReviews(caseId);
         return ResponseEntity.ok(results);
     }
 
     @PostMapping("/trigger/{caseId}/{documentType}")
-    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'RISK_ASSESSMENT', 'ALL_MODULES')")
     public ResponseEntity<ComplianceReviewDTO> triggerReview(
             @PathVariable String caseId, @PathVariable String documentType) {
         ComplianceReviewDTO result = complianceReviewService.triggerReview(caseId, documentType);
@@ -37,14 +37,14 @@ public class ComplianceReviewController {
     }
 
     @GetMapping("/{caseId}")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'RISK_ASSESSMENT', 'ALL_MODULES')")
     public ResponseEntity<List<ComplianceReviewDTO>> getReviewResults(@PathVariable String caseId) {
         List<ComplianceReviewDTO> results = complianceReviewService.getReviewResults(caseId);
         return ResponseEntity.ok(results);
     }
 
     @GetMapping("/{caseId}/summary")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'RISK_ASSESSMENT', 'ALL_MODULES')")
     public ResponseEntity<ComplianceReviewDTO.ComplianceReviewSummary> getReviewSummary(@PathVariable String caseId) {
         ComplianceReviewDTO.ComplianceReviewSummary summary = complianceReviewService.getReviewSummary(caseId);
         return ResponseEntity.ok(summary);
