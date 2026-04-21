@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
@@ -49,6 +50,9 @@ public class CaseService {
 
     @Autowired
     private com.merchantonboarding.repository.UserRepository userRepository;
+
+    @Value("${app.upload.dir:uploads}")
+    private String uploadDir;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -382,9 +386,9 @@ public class CaseService {
             }
         }
 
-        Path uploadDir = Paths.get("uploads", caseId);
+        Path uploadPath = Paths.get(uploadDir, caseId);
         try {
-            Files.createDirectories(uploadDir);
+            Files.createDirectories(uploadPath);
         } catch (IOException e) {
             throw new RuntimeException("Failed to create upload directory", e);
         }
@@ -395,7 +399,7 @@ public class CaseService {
 
             String originalName = file.getOriginalFilename();
             String safeName = UUID.randomUUID() + "_" + (originalName != null ? originalName.replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
-            Path filePath = uploadDir.resolve(safeName);
+            Path filePath = uploadPath.resolve(safeName);
 
             try {
                 Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
