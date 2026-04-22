@@ -32,5 +32,8 @@ public class VerificationRequestEvent {
     // Original filename of the uploaded document being verified
     private String documentFileName;
 
+    // Disk path to the uploaded document file
+    private String documentFilePath;
+
     private LocalDateTime requestedAt;
 }

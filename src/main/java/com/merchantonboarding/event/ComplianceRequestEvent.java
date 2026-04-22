@@ -26,5 +26,8 @@ public class ComplianceRequestEvent {
     // Original filename of the uploaded document being reviewed
     private String documentFileName;
 
+    // Disk path to the uploaded document file
+    private String documentFilePath;
+
     private LocalDateTime requestedAt;
 }

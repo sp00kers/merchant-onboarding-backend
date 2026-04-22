@@ -172,13 +172,14 @@ public class ExternalVerificationService {
      * process the verification, and publish the result back to the response topic.
      */
     private void publishVerificationRequest(VerificationResult verification, OnboardingCase caseData) {
-        // Look up the matching uploaded document filename
+        // Look up the matching uploaded document filename and file path
         String docTypeName = VERIFICATION_TO_DOC_TYPE.get(verification.getVerificationType());
-        String documentFileName = caseData.getDocuments().stream()
+        Document matchedDoc = caseData.getDocuments().stream()
                 .filter(d -> docTypeName != null && docTypeName.equals(d.getType()))
-                .map(Document::getName)
                 .findFirst()
                 .orElse(null);
+        String documentFileName = matchedDoc != null ? matchedDoc.getName() : null;
+        String documentFilePath = matchedDoc != null ? matchedDoc.getFilePath() : null;
 
         VerificationRequestEvent event = VerificationRequestEvent.builder()
                 .caseId(caseData.getCaseId())
@@ -193,6 +194,7 @@ public class ExternalVerificationService {
                 .directorPhone(caseData.getDirectorPhone())
                 .directorEmail(caseData.getDirectorEmail())
                 .documentFileName(documentFileName)
+                .documentFilePath(documentFilePath)
                 .requestedAt(LocalDateTime.now())
                 .build();
 

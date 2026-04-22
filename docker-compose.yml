@@ -52,9 +52,13 @@ services:
     working_dir: /app
     command: >
       sh -c "npm install && node mock-server.js"
+    ports:
+      - "3001:3001"
     volumes:
       - ./mock-api:/app
+      - ../uploads:/app/uploads
     environment:
+      PORT: 3001
       KAFKA_BROKER: kafka:29092
       REQUEST_TOPIC: verification.requests.topic
       RESPONSE_TOPIC: verification.responses.topic

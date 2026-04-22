@@ -129,13 +129,14 @@ public class ComplianceReviewService {
     }
 
     private void publishComplianceRequest(ComplianceReviewResult review, OnboardingCase caseData) {
-        // Look up the matching uploaded document filename
+        // Look up the matching uploaded document filename and file path
         String docTypeName = COMPLIANCE_TO_DOC_TYPE.get(review.getDocumentType());
-        String documentFileName = caseData.getDocuments().stream()
+        Document matchedDoc = caseData.getDocuments().stream()
                 .filter(d -> docTypeName != null && docTypeName.equals(d.getType()))
-                .map(Document::getName)
                 .findFirst()
                 .orElse(null);
+        String documentFileName = matchedDoc != null ? matchedDoc.getName() : null;
+        String documentFilePath = matchedDoc != null ? matchedDoc.getFilePath() : null;
 
         ComplianceRequestEvent event = ComplianceRequestEvent.builder()
                 .caseId(caseData.getCaseId())
@@ -147,6 +148,7 @@ public class ComplianceReviewService {
                 .businessAddress(caseData.getBusinessAddress())
                 .directorName(caseData.getDirectorName())
                 .documentFileName(documentFileName)
+                .documentFilePath(documentFilePath)
                 .requestedAt(LocalDateTime.now())
                 .build();
 
