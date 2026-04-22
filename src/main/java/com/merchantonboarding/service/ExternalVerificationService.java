@@ -51,7 +51,7 @@ public class ExternalVerificationService {
             TYPE_BUSINESS_REGISTRATION, TYPE_DIRECTOR_ID, TYPE_BENEFICIAL_OWNERSHIP
     );
 
-    // Map verification type → uploaded document type name
+    // Map verification type to uploaded document type name
     private static final Map<String, String> VERIFICATION_TO_DOC_TYPE = Map.of(
             TYPE_BUSINESS_REGISTRATION, "Business Registration Certificate",
             TYPE_DIRECTOR_ID, "Director Government ID",

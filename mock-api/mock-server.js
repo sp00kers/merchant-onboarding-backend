@@ -37,11 +37,11 @@ const producer = kafka.producer();
 // Document filename-based outcome detection
 //
 // The uploaded document filename determines pass/fail:
-//   1. No document uploaded                        → FAILED
-//   2. Filename contains failure keyword            → FAILED
+//   1. No document uploaded = FAILED
+//   2. Filename contains failure keyword = FAILED
 //      (expired, revoked, invalid, refused, suspended, fake)
-//   3. Filename does NOT contain accepted keyword   → FAILED (wrong document)
-//   4. Otherwise                                    → PASSED
+//   3. Filename does NOT contain accepted keyword = FAILED (wrong document)
+//   4. Otherwise = PASSED
 // ---------------------------------------------------------------------------
 
 const FAILURE_KEYWORDS = ['expired', 'revoked', 'invalid', 'refused', 'suspended', 'fake'];
@@ -239,7 +239,7 @@ async function processVerificationMessage(message) {
     messages: [{ key: request.caseId, value: JSON.stringify(responseEvent) }],
   });
 
-  console.log(`[VERIFICATION] Published response for case=${request.caseId} type=${request.verificationType} → status=${result.status}`);
+  console.log(`[VERIFICATION] Published response for case=${request.caseId} type=${request.verificationType} to status=${result.status}`);
 }
 
 async function processComplianceMessage(message) {
@@ -272,7 +272,7 @@ async function processComplianceMessage(message) {
     messages: [{ key: request.caseId, value: JSON.stringify(responseEvent) }],
   });
 
-  console.log(`[COMPLIANCE] Published response for case=${request.caseId} type=${request.documentType} → status=${result.status}`);
+  console.log(`[COMPLIANCE] Published response for case=${request.caseId} type=${request.documentType} to status=${result.status}`);
 }
 
 // ---------------------------------------------------------------------------

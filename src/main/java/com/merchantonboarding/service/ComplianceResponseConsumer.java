@@ -52,7 +52,7 @@ public class ComplianceResponseConsumer {
 
             complianceReviewResultRepository.save(review);
 
-            log.info("Updated compliance review id={} for case {} type {} → status={}",
+            log.info("Updated compliance review id={} for case {} type {} to status={}",
                     review.getId(), event.getCaseId(), event.getDocumentType(), event.getStatus());
 
             OnboardingCase onboardingCase = review.getOnboardingCase();

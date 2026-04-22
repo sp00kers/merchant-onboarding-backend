@@ -50,7 +50,7 @@ public class ComplianceReviewService {
             TYPE_BUSINESS_LICENSE, TYPE_PCI_DSS_SAQ, TYPE_TERMS_OF_SERVICE
     );
 
-    // Map compliance type → uploaded document type name
+    // Map compliance type to uploaded document type name
     private static final Map<String, String> COMPLIANCE_TO_DOC_TYPE = Map.of(
             TYPE_BUSINESS_LICENSE, "Business License",
             TYPE_PCI_DSS_SAQ, "PCI DSS SAQ",

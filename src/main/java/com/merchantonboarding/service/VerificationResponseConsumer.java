@@ -62,7 +62,7 @@ public class VerificationResponseConsumer {
 
             verificationResultRepository.save(verification);
 
-            log.info("Updated verification result id={} for case {} type {} → status={} score={}",
+            log.info("Updated verification result id={} for case {} type {} to status={} score={}",
                     verification.getId(), event.getCaseId(), event.getVerificationType(),
                     event.getStatus(), event.getConfidenceScore());
 

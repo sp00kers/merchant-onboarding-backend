@@ -105,7 +105,7 @@ public class EmailService {
                         <p><strong>Case ID:</strong> %s</p>
                         <p><strong>Business:</strong> %s</p>
                         <p><strong>Status Change:</strong></p>
-                        <p><span class="status status-old">%s</span> → <span class="status status-new">%s</span></p>
+                        <p><span class="status status-old">%s</span> to <span class="status status-new">%s</span></p>
                         <p>Please log in to the Merchant Onboarding Platform for more details.</p>
                     </div>
                     <div class="footer">
