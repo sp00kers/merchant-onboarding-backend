@@ -36,7 +36,7 @@ public class CaseDTO {
     @NotBlank(message = "Director IC is required")
     private String directorIC;
 
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Phone number must be 10-15 digits")
+    @Pattern(regexp = "^\\+?[0-9]{8,11}$", message = "The phone number's length should be between 8 to 11.")
     private String directorPhone;
 
     @Email(message = "Email should be valid")
