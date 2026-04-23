@@ -39,8 +39,8 @@ class RoleServiceTest {
     @BeforeEach
     void setUp() {
         testPermission = new Permission();
-        testPermission.setId("case_view");
-        testPermission.setName("Case View");
+        testPermission.setId("case_creation");
+        testPermission.setName("Case Creation");
         testPermission.setCategory("cases");
         testPermission.setActive(true);
 
@@ -105,16 +105,16 @@ class RoleServiceTest {
         dto.setName("New Role");
         dto.setDescription("A new role");
         dto.setActive(true);
-        dto.setPermissions(Set.of("case_view"));
+        dto.setPermissions(Set.of("case_creation"));
 
-        when(permissionRepository.findById("case_view")).thenReturn(Optional.of(testPermission));
+        when(permissionRepository.findById("case_creation")).thenReturn(Optional.of(testPermission));
         when(roleRepository.save(any(Role.class))).thenAnswer(inv -> inv.getArgument(0));
 
         RoleDTO result = roleService.createRole(dto);
 
         assertNotNull(result);
         assertEquals("New Role", result.getName());
-        assertTrue(result.getPermissions().contains("case_view"));
+        assertTrue(result.getPermissions().contains("case_creation"));
     }
 
     @Test
@@ -123,10 +123,10 @@ class RoleServiceTest {
         dto.setName("Updated Officer");
         dto.setDescription("Updated description");
         dto.setActive(true);
-        dto.setPermissions(Set.of("case_view"));
+        dto.setPermissions(Set.of("case_creation"));
 
         when(roleRepository.findById("onboarding_officer")).thenReturn(Optional.of(testRole));
-        when(permissionRepository.findById("case_view")).thenReturn(Optional.of(testPermission));
+        when(permissionRepository.findById("case_creation")).thenReturn(Optional.of(testPermission));
         when(roleRepository.save(any(Role.class))).thenAnswer(inv -> inv.getArgument(0));
 
         RoleDTO result = roleService.updateRole("onboarding_officer", dto);
@@ -166,7 +166,7 @@ class RoleServiceTest {
     void userHasPermission_HasSpecificPermission() {
         when(roleRepository.findById("onboarding_officer")).thenReturn(Optional.of(testRole));
 
-        assertTrue(roleService.userHasPermission("onboarding_officer", "case_view"));
+        assertTrue(roleService.userHasPermission("onboarding_officer", "case_creation"));
     }
 
     @Test
@@ -190,7 +190,7 @@ class RoleServiceTest {
     void userHasPermission_RoleNotFound() {
         when(roleRepository.findById("nonexistent")).thenReturn(Optional.empty());
 
-        assertFalse(roleService.userHasPermission("nonexistent", "case_view"));
+        assertFalse(roleService.userHasPermission("nonexistent", "case_creation"));
     }
 
     // ─── Permission CRUD ──────────────────────────────────────
@@ -220,20 +220,20 @@ class RoleServiceTest {
         dto.setCategory("cases");
         dto.setActive(true);
 
-        when(permissionRepository.findById("case_view")).thenReturn(Optional.of(testPermission));
+        when(permissionRepository.findById("case_creation")).thenReturn(Optional.of(testPermission));
         when(permissionRepository.save(any(Permission.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        PermissionDTO result = roleService.updatePermission("case_view", dto);
+        PermissionDTO result = roleService.updatePermission("case_creation", dto);
 
         assertEquals("Updated Permission", result.getName());
     }
 
     @Test
     void deletePermission_Success() {
-        when(permissionRepository.existsById("case_view")).thenReturn(true);
+        when(permissionRepository.existsById("case_creation")).thenReturn(true);
 
-        assertDoesNotThrow(() -> roleService.deletePermission("case_view"));
-        verify(permissionRepository).deleteById("case_view");
+        assertDoesNotThrow(() -> roleService.deletePermission("case_creation"));
+        verify(permissionRepository).deleteById("case_creation");
     }
 
     @Test
@@ -251,7 +251,7 @@ class RoleServiceTest {
         List<PermissionDTO> result = roleService.getPermissionsByCategory("cases");
 
         assertEquals(1, result.size());
-        assertEquals("case_view", result.get(0).getId());
+        assertEquals("case_creation", result.get(0).getId());
     }
 
     @Test

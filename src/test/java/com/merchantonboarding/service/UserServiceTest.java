@@ -43,8 +43,8 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         testPermission = new Permission();
-        testPermission.setId("case_view");
-        testPermission.setName("Case View");
+        testPermission.setId("case_creation");
+        testPermission.setName("Case Creation");
         testPermission.setActive(true);
 
         testRole = new Role();
@@ -78,7 +78,7 @@ class UserServiceTest {
         assertTrue(details.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ONBOARDING_OFFICER")));
         assertTrue(details.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("CASE_VIEW")));
+                .anyMatch(a -> a.getAuthority().equals("CASE_CREATION")));
     }
 
     @Test

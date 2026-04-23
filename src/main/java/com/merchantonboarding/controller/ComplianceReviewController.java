@@ -37,14 +37,14 @@ public class ComplianceReviewController {
     }
 
     @GetMapping("/{caseId}")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'RISK_ASSESSMENT', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'RISK_ASSESSMENT', 'ALL_MODULES')")
     public ResponseEntity<List<ComplianceReviewDTO>> getReviewResults(@PathVariable String caseId) {
         List<ComplianceReviewDTO> results = complianceReviewService.getReviewResults(caseId);
         return ResponseEntity.ok(results);
     }
 
     @GetMapping("/{caseId}/summary")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'RISK_ASSESSMENT', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'COMPLIANCE_CHECK', 'RISK_ASSESSMENT', 'ALL_MODULES')")
     public ResponseEntity<ComplianceReviewDTO.ComplianceReviewSummary> getReviewSummary(@PathVariable String caseId) {
         ComplianceReviewDTO.ComplianceReviewSummary summary = complianceReviewService.getReviewSummary(caseId);
         return ResponseEntity.ok(summary);

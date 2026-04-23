@@ -26,7 +26,6 @@ INSERT IGNORE INTO permissions (id, name, description, category, is_active, crea
 ('role_management', 'Role Management', 'Manage roles and permissions', 'role', true, NOW(), NOW()),
 ('permission_management', 'Permission Management', 'Manage system permissions', 'role', true, NOW(), NOW()),
 ('case_creation', 'Case Creation', 'Create new cases', 'case', true, NOW(), NOW()),
-('case_view', 'Case View', 'View cases in read-only mode', 'case', true, NOW(), NOW()),
 ('case_management', 'Case Management', 'Edit and manage existing cases', 'case', true, NOW(), NOW()),
 ('document_upload', 'Document Upload', 'Upload case documents', 'case', true, NOW(), NOW()),
 ('compliance_check', 'Compliance Check', 'Perform compliance checks', 'case', true, NOW(), NOW()),
@@ -55,12 +54,10 @@ INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
 -- Onboarding Officer permissions
 INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
 ('onboarding_officer', 'case_creation'),
-('onboarding_officer', 'case_view'),
 ('onboarding_officer', 'document_upload');
 
 -- Compliance Reviewer permissions
 INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
-('compliance_reviewer', 'case_view'),
 ('compliance_reviewer', 'case_management'),
 ('compliance_reviewer', 'compliance_check'),
 ('compliance_reviewer', 'risk_assessment'),

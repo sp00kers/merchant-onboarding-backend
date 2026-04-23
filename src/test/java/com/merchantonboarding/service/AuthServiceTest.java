@@ -50,8 +50,8 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         testPermission = new Permission();
-        testPermission.setId("case_view");
-        testPermission.setName("Case View");
+        testPermission.setId("case_creation");
+        testPermission.setName("Case Creation");
         testPermission.setActive(true);
 
         testRole = new Role();

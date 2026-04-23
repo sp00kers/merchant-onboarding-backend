@@ -49,7 +49,7 @@ public class VerificationController {
      * Get all verification results for a case
      */
     @GetMapping("/{caseId}")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
     public ResponseEntity<List<VerificationDTO>> getVerificationResults(@PathVariable String caseId) {
         List<VerificationDTO> results = verificationService.getVerificationResults(caseId);
         return ResponseEntity.ok(results);
@@ -59,7 +59,7 @@ public class VerificationController {
      * Get verification summary for a case
      */
     @GetMapping("/{caseId}/summary")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
     public ResponseEntity<VerificationDTO.VerificationSummary> getVerificationSummary(@PathVariable String caseId) {
         VerificationDTO.VerificationSummary summary = verificationService.getVerificationSummary(caseId);
         return ResponseEntity.ok(summary);
@@ -69,7 +69,7 @@ public class VerificationController {
      * Get available verification types
      */
     @GetMapping("/types")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'ALL_MODULES')")
     public ResponseEntity<List<Map<String, String>>> getVerificationTypes() {
         List<Map<String, String>> types = List.of(
             Map.of("code", "BUSINESS_REGISTRATION", "name", "Business Registration Certificate", "description", "Verify business registration certificate with SSM"),

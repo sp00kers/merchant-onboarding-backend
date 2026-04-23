@@ -44,10 +44,10 @@ public class CaseController {
     
     /**
      * Get all cases with pagination and filtering
-     * Requires CASE_VIEW permission
+     * Requires CASE_MANAGEMENT, CASE_CREATION, or ALL_MODULES permission
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('CASE_VIEW') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<List<CaseDTO>> getAllCases(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String search) {
@@ -58,10 +58,10 @@ public class CaseController {
 
     /**
      * Get all cases with pagination
-     * Requires CASE_VIEW permission
+     * Requires CASE_MANAGEMENT, CASE_CREATION, or ALL_MODULES permission
      */
     @GetMapping("/paged")
-    @PreAuthorize("hasAuthority('CASE_VIEW') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<Page<CaseDTO>> getAllCasesPaged(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -107,10 +107,10 @@ public class CaseController {
 
     /**
      * Get case by ID with path parameter
-     * Requires CASE_VIEW permission
+     * Requires CASE_MANAGEMENT, CASE_CREATION, or ALL_MODULES permission
      */
     @GetMapping("/{caseId}")
-    @PreAuthorize("hasAuthority('CASE_VIEW') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<CaseDTO> getCaseById(@PathVariable String caseId) {
         CaseDTO caseDTO = caseService.getCaseById(caseId);
         return ResponseEntity.ok(caseDTO);
@@ -142,10 +142,10 @@ public class CaseController {
     
     /**
      * Get cases by assigned officer
-     * Requires CASE_VIEW permission
+     * Requires CASE_CREATION, CASE_MANAGEMENT, or ALL_MODULES permission
      */
     @GetMapping("/by-officer/{assignedTo}")
-    @PreAuthorize("hasAuthority('CASE_VIEW') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('CASE_CREATION') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<List<CaseDTO>> getCasesByOfficer(@PathVariable String assignedTo) {
         List<CaseDTO> cases = caseService.getCasesByOfficer(assignedTo);
         return ResponseEntity.ok(cases);
@@ -153,10 +153,10 @@ public class CaseController {
     
     /**
      * Search cases
-     * Requires CASE_VIEW permission
+     * Requires CASE_CREATION, CASE_MANAGEMENT, or ALL_MODULES permission
      */
     @GetMapping("/search")
-    @PreAuthorize("hasAuthority('CASE_VIEW') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('CASE_CREATION') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<List<CaseDTO>> searchCases(@RequestParam String keyword) {
         List<CaseDTO> cases = caseService.searchCases(keyword);
         return ResponseEntity.ok(cases);
@@ -164,10 +164,10 @@ public class CaseController {
     
     /**
      * Get case statistics
-     * Requires CASE_VIEW permission
+     * Requires CASE_CREATION, CASE_MANAGEMENT, or ALL_MODULES permission
      */
     @GetMapping("/statistics")
-    @PreAuthorize("hasAuthority('CASE_VIEW') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('CASE_CREATION') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<Map<String, Long>> getCaseStatistics() {
         Map<String, Long> statistics = caseService.getCaseStatistics();
         return ResponseEntity.ok(statistics);
@@ -211,10 +211,10 @@ public class CaseController {
 
     /**
      * Add history entry to a case
-     * Requires CASE_VIEW or CASE_MANAGEMENT permission
+     * Requires CASE_MANAGEMENT or CASE_CREATION permission
      */
     @PostMapping("/{caseId}/history")
-    @PreAuthorize("hasAuthority('CASE_VIEW') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<CaseDTO> addHistoryEntry(@PathVariable String caseId,
                                                    @RequestBody Map<String, String> request) {
         String action = request.get("action");

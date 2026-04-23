@@ -36,7 +36,7 @@ public class BusinessParamsController {
      * Get all business types - read access for case creation
      */
     @GetMapping("/business-types")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('CASE_CREATION') or hasAuthority('CASE_VIEW') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<List<BusinessTypeDTO>> getAllBusinessTypes(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status) {
@@ -79,7 +79,7 @@ public class BusinessParamsController {
      * Get all merchant categories - read access for case creation
      */
     @GetMapping("/merchant-categories")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('CASE_CREATION') or hasAuthority('CASE_VIEW') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIGURATION') or hasAuthority('CASE_CREATION') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<List<MerchantCategoryDTO>> getAllMerchantCategories(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
