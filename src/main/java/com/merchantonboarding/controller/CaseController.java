@@ -130,10 +130,11 @@ public class CaseController {
     
     /**
      * Delete case
-     * Requires CASE_MANAGEMENT permission
+     * Requires CASE_CREATION, CASE_MANAGEMENT, or ALL_MODULES permission
+     * Only cases not in Approved or Rejected status can be deleted
      */
     @DeleteMapping("/{caseId}")
-    @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('CASE_CREATION') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<Void> deleteCase(@PathVariable String caseId) {
         caseService.deleteCase(caseId);
         return ResponseEntity.noContent().build();

@@ -228,8 +228,11 @@ public class CaseService {
      */
     @Auditable(action = "DELETE_CASE", entityType = "Case")
     public void deleteCase(String caseId) {
-        if (!caseRepository.existsById(caseId)) {
-            throw new ResourceNotFoundException("Case not found with id: " + caseId);
+        OnboardingCase existingCase = caseRepository.findById(caseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
+        String status = existingCase.getStatus();
+        if ("Approved".equalsIgnoreCase(status) || "Rejected".equalsIgnoreCase(status)) {
+            throw new IllegalStateException("Cannot delete a case with status: " + status);
         }
         caseRepository.deleteById(caseId);
     }
