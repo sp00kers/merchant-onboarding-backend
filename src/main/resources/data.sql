@@ -40,8 +40,7 @@ INSERT IGNORE INTO permissions (id, name, description, category, is_active, crea
 INSERT IGNORE INTO roles (id, name, description, is_active, created_at, updated_at) VALUES
 ('admin', 'System Administrator', 'Full system access and user management', true, NOW(), NOW()),
 ('onboarding_officer', 'Onboarding Officer', 'Create new merchant onboarding cases and view existing ones', true, NOW(), NOW()),
-('compliance_reviewer', 'Compliance Reviewer', 'Review and edit cases for regulatory compliance', true, NOW(), NOW()),
-('verifier', 'Background Verifier', 'Conduct background verification processes', true, NOW(), NOW());
+('compliance_reviewer', 'Compliance Reviewer', 'Review and edit cases for regulatory compliance', true, NOW(), NOW());
 
 -- Assign permissions to roles (IGNORE if already exists)
 -- Admin gets all permissions
@@ -68,18 +67,10 @@ INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
 ('compliance_reviewer', 'document_upload'),
 ('compliance_reviewer', 'system_configuration');
 
--- Verifier permissions
-INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
-('verifier', 'case_view'),
-('verifier', 'background_check'),
-('verifier', 'external_api_access'),
-('verifier', 'verification_reports');
-
 -- Insert Users (password is 'password123' encoded with BCrypt) - IGNORE if already exists
 INSERT IGNORE INTO users (id, name, email, password, role_id, department, phone, status, last_login, notes, created_at, updated_at) VALUES
 ('USR001', 'John Doe', 'john.doe@bank.com', '$2a$10$G3WbYrDSBzXZb6deZEcKxeiNxu2qXyRL9M3mfTkmlv8IK.usAJpmW', 'onboarding_officer', 'Merchant Services', '+60123456789', 'active', NOW(), 'Senior officer with 5 years experience', NOW(), NOW()),
 ('USR002', 'Jane Smith', 'jane.smith@bank.com', '$2a$10$G3WbYrDSBzXZb6deZEcKxeiNxu2qXyRL9M3mfTkmlv8IK.usAJpmW', 'compliance_reviewer', 'Compliance', '+60123456788', 'active', NOW(), 'Compliance specialist', NOW(), NOW()),
-('USR003', 'Mike Johnson', 'mike.johnson@bank.com', '$2a$10$G3WbYrDSBzXZb6deZEcKxeiNxu2qXyRL9M3mfTkmlv8IK.usAJpmW', 'verifier', 'Risk Management', '+60123456787', 'active', NOW(), 'Background verification expert', NOW(), NOW()),
 ('USR004', 'Sarah Lee', 'sarah.lee@bank.com', '$2a$10$G3WbYrDSBzXZb6deZEcKxeiNxu2qXyRL9M3mfTkmlv8IK.usAJpmW', 'admin', 'IT', '+60123456786', 'active', NOW(), 'System administrator', NOW(), NOW()),
 ('USR005', 'David Chen', 'david.chen@bank.com', '$2a$10$G3WbYrDSBzXZb6deZEcKxeiNxu2qXyRL9M3mfTkmlv8IK.usAJpmW', 'onboarding_officer', 'Operations', '+60123456785', 'inactive', NULL, 'On leave', NOW(), NOW());
 
