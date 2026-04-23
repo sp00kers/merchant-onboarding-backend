@@ -3,6 +3,7 @@ package com.merchantonboarding.service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -93,11 +94,15 @@ public class AuthService {
 
             // Update last login
             user.setLastLogin(LocalDateTime.now());
+
+            // Generate unique session ID and store it
+            String sessionId = UUID.randomUUID().toString();
+            user.setActiveSessionToken(sessionId);
             userRepository.save(user);
 
-            // Generate JWT token
+            // Generate JWT token with session ID
             System.out.println("=== Generating JWT token");
-            String token = jwtService.generateToken(user.getEmail());
+            String token = jwtService.generateToken(user.getEmail(), sessionId);
             System.out.println("=== Token generated: " + (token != null ? "SUCCESS" : "NULL"));
 
             // Log successful login
@@ -160,8 +165,13 @@ public class AuthService {
         // Save user
         User savedUser = userRepository.save(user);
 
-        // Generate JWT token
-        String token = jwtService.generateToken(savedUser.getEmail());
+        // Generate session ID and store it
+        String sessionId = UUID.randomUUID().toString();
+        savedUser.setActiveSessionToken(sessionId);
+        userRepository.save(savedUser);
+
+        // Generate JWT token with session ID
+        String token = jwtService.generateToken(savedUser.getEmail(), sessionId);
 
         // Convert to DTO
         UserDTO responseDTO = convertToDTO(savedUser);
@@ -182,7 +192,12 @@ public class AuthService {
             throw new RuntimeException("Invalid token");
         }
 
-        String newToken = jwtService.generateToken(user.getEmail());
+        // Generate new session ID and store it
+        String sessionId = UUID.randomUUID().toString();
+        user.setActiveSessionToken(sessionId);
+        userRepository.save(user);
+
+        String newToken = jwtService.generateToken(user.getEmail(), sessionId);
         UserDTO userDTO = convertToDTO(user);
 
         return new AuthResponse(newToken, userDTO);

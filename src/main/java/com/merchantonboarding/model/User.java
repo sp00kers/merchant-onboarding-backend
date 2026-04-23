@@ -71,6 +71,9 @@ public class User {
     @Column(length = 500)
     private String notes;
 
+    @Column(name = "active_session_token", length = 100)
+    private String activeSessionToken;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     

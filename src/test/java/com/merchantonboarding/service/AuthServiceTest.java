@@ -83,7 +83,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(auth);
         when(userRepository.findByEmail("john.doe@bank.com")).thenReturn(Optional.of(testUser));
-        when(jwtService.generateToken("john.doe@bank.com")).thenReturn("jwt-token-123");
+        when(jwtService.generateToken(eq("john.doe@bank.com"), anyString())).thenReturn("jwt-token-123");
         when(userRepository.save(any(User.class))).thenReturn(testUser);
 
         AuthResponse response = authService.authenticate(loginRequest);
@@ -143,7 +143,7 @@ class AuthServiceTest {
         when(roleRepository.findById("onboarding_officer")).thenReturn(Optional.of(testRole));
         when(passwordEncoder.encode("password123")).thenReturn("encoded-password");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(jwtService.generateToken("new.user@bank.com")).thenReturn("new-jwt-token");
+        when(jwtService.generateToken(eq("new.user@bank.com"), anyString())).thenReturn("new-jwt-token");
 
         AuthResponse response = authService.register(userDTO);
 
@@ -184,7 +184,7 @@ class AuthServiceTest {
         when(roleRepository.findById("onboarding_officer")).thenReturn(Optional.of(testRole));
         when(passwordEncoder.encode(anyString())).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(jwtService.generateToken("default@bank.com")).thenReturn("token");
+        when(jwtService.generateToken(eq("default@bank.com"), anyString())).thenReturn("token");
 
         AuthResponse response = authService.register(userDTO);
 
@@ -199,7 +199,8 @@ class AuthServiceTest {
         when(jwtService.extractUsername("valid-token")).thenReturn("john.doe@bank.com");
         when(userRepository.findByEmail("john.doe@bank.com")).thenReturn(Optional.of(testUser));
         when(jwtService.isTokenValid("valid-token", "john.doe@bank.com")).thenReturn(true);
-        when(jwtService.generateToken("john.doe@bank.com")).thenReturn("new-token");
+        when(jwtService.generateToken(eq("john.doe@bank.com"), anyString())).thenReturn("new-token");
+        when(userRepository.save(any(User.class))).thenReturn(testUser);
 
         AuthResponse response = authService.refreshToken("valid-token");
 

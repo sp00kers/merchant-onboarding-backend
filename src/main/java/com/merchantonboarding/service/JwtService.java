@@ -1,14 +1,16 @@
 package com.merchantonboarding.service;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import java.util.Date;
+import java.util.function.Function;
+
+import javax.crypto.SecretKey;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.function.Function;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
@@ -28,13 +30,18 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(String username) {
+    public String generateToken(String username, String sessionId) {
         return Jwts.builder()
                 .subject(username)
+                .claim("sessionId", sessionId)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSignInKey())
                 .compact();
+    }
+
+    public String extractSessionId(String token) {
+        return extractClaim(token, claims -> claims.get("sessionId", String.class));
     }
 
     public boolean isTokenValid(String token, String username) {
