@@ -116,10 +116,10 @@ public class UserController {
 
     /**
      * Get users by role
-     * Requires USER_MANAGEMENT permission
+     * Requires USER_MANAGEMENT, CASE_CREATION, CASE_MANAGEMENT, or ALL_MODULES permission
      */
     @GetMapping("/by-role/{roleId}")
-    @PreAuthorize("hasAuthority('USER_MANAGEMENT') or hasAuthority('ALL_MODULES')")
+    @PreAuthorize("hasAuthority('USER_MANAGEMENT') or hasAuthority('CASE_CREATION') or hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
     public ResponseEntity<List<UserDTO>> getUsersByRole(@PathVariable String roleId) {
         List<UserDTO> users = userService.getUsersByRole(roleId);
         return ResponseEntity.ok(users);
