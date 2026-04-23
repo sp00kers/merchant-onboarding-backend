@@ -18,9 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.merchantonboarding.dto.AnalyticsDTO;
+import com.merchantonboarding.model.ComplianceReviewResult;
 import com.merchantonboarding.model.OnboardingCase;
 import com.merchantonboarding.model.VerificationResult;
 import com.merchantonboarding.repository.CaseRepository;
+import com.merchantonboarding.repository.ComplianceReviewResultRepository;
 import com.merchantonboarding.repository.VerificationResultRepository;
 
 @Service
@@ -32,6 +34,9 @@ public class AnalyticsService {
 
     @Autowired(required = false)
     private VerificationResultRepository verificationResultRepository;
+
+    @Autowired(required = false)
+    private ComplianceReviewResultRepository complianceReviewResultRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -66,10 +71,8 @@ public class AnalyticsService {
         analytics.setCaseTrends(calculateCaseTrends(allCases, 30));
         analytics.setApprovalTrends(calculateApprovalTrends(allCases, 30));
 
-        // Verification Stats
-        if (verificationResultRepository != null) {
-            analytics.setVerificationStats(calculateVerificationStats());
-        }
+        // Verification Stats (Background Verification + Compliance Review)
+        analytics.setVerificationStats(calculateVerificationStats());
 
         return analytics;
     }
@@ -222,33 +225,51 @@ public class AnalyticsService {
     private AnalyticsDTO.VerificationStats calculateVerificationStats() {
         AnalyticsDTO.VerificationStats stats = new AnalyticsDTO.VerificationStats();
 
-        if (verificationResultRepository == null) {
-            return stats;
+        long totalCount = 0;
+        long passedCount = 0;
+        long failedCount = 0;
+
+        // Background Verification results
+        if (verificationResultRepository != null) {
+            List<VerificationResult> bgResults = verificationResultRepository.findAll();
+            totalCount += bgResults.size();
+            passedCount += bgResults.stream()
+                    .filter(v -> "PASSED".equals(v.getStatus()))
+                    .count();
+            failedCount += bgResults.stream()
+                    .filter(v -> "FAILED".equals(v.getStatus()))
+                    .count();
+
+            double avgConfidence = bgResults.stream()
+                    .filter(v -> v.getConfidenceScore() != null)
+                    .mapToInt(VerificationResult::getConfidenceScore)
+                    .average()
+                    .orElse(0.0);
+            stats.setAverageConfidenceScore(Math.round(avgConfidence * 100.0) / 100.0);
+
+            stats.setVerificationTypeDistribution(bgResults.stream()
+                    .filter(v -> v.getVerificationType() != null)
+                    .collect(Collectors.groupingBy(
+                            VerificationResult::getVerificationType,
+                            Collectors.counting()
+                    )));
         }
 
-        List<VerificationResult> results = verificationResultRepository.findAll();
+        // Compliance Review results
+        if (complianceReviewResultRepository != null) {
+            List<ComplianceReviewResult> crResults = complianceReviewResultRepository.findAll();
+            totalCount += crResults.size();
+            passedCount += crResults.stream()
+                    .filter(r -> "PASSED".equals(r.getStatus()))
+                    .count();
+            failedCount += crResults.stream()
+                    .filter(r -> "FAILED".equals(r.getStatus()))
+                    .count();
+        }
 
-        stats.setTotalVerifications(results.size());
-        stats.setCompletedVerifications(results.stream()
-                .filter(v -> "COMPLETED".equals(v.getStatus()))
-                .count());
-        stats.setFailedVerifications(results.stream()
-                .filter(v -> "FAILED".equals(v.getStatus()))
-                .count());
-
-        double avgConfidence = results.stream()
-                .filter(v -> v.getConfidenceScore() != null)
-                .mapToInt(VerificationResult::getConfidenceScore)
-                .average()
-                .orElse(0.0);
-        stats.setAverageConfidenceScore(Math.round(avgConfidence * 100.0) / 100.0);
-
-        stats.setVerificationTypeDistribution(results.stream()
-                .filter(v -> v.getVerificationType() != null)
-                .collect(Collectors.groupingBy(
-                        VerificationResult::getVerificationType,
-                        Collectors.counting()
-                )));
+        stats.setTotalVerifications(totalCount);
+        stats.setPassedVerifications(passedCount);
+        stats.setFailedVerifications(failedCount);
 
         return stats;
     }

@@ -45,7 +45,7 @@ public class AnalyticsDTO {
     @Data
     public static class VerificationStats {
         private long totalVerifications;
-        private long completedVerifications;
+        private long passedVerifications;
         private long failedVerifications;
         private double averageConfidenceScore;
         private Map<String, Long> verificationTypeDistribution;
