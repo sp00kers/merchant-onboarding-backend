@@ -23,6 +23,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -98,7 +100,7 @@ public class CaseService {
         // Add initial history entry
         CaseHistory historyEntry = new CaseHistory();
         historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
-        historyEntry.setAction("Case created by " + (caseDTO.getAssignedTo() != null ? caseDTO.getAssignedTo() : "System"));
+        historyEntry.setAction("Case created by " + getCurrentUserName());
         historyEntry.setOnboardingCase(newCase);
         newCase.getHistory().add(historyEntry);
 
@@ -128,7 +130,7 @@ public class CaseService {
 
         CaseHistory historyEntry = new CaseHistory();
         historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
-        historyEntry.setAction("Draft case created");
+        historyEntry.setAction("Draft case created by " + getCurrentUserName());
         historyEntry.setOnboardingCase(newCase);
         newCase.getHistory().add(historyEntry);
 
@@ -543,6 +545,23 @@ public class CaseService {
         c.setCreatedDate(dto.getCreatedDate() != null ? dto.getCreatedDate() : LocalDateTime.now().format(DATE_FORMATTER));
 
         return c;
+    }
+
+    /**
+     * Get the current logged-in user's name from the security context
+     */
+    private String getCurrentUserName() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null) {
+                return userRepository.findByEmail(auth.getName())
+                        .map(u -> u.getName())
+                        .orElse("System");
+            }
+        } catch (Exception e) {
+            // Fall back to System if security context is unavailable
+        }
+        return "System";
     }
 
     /**
