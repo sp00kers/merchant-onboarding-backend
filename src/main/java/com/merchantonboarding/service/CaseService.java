@@ -329,13 +329,50 @@ public class CaseService {
         OnboardingCase onboardingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
 
+        // Resolve current user for comment attribution
+        String currentUserName = null;
+        String currentUserId = null;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getName() != null) {
+            var userOpt = userRepository.findByEmail(auth.getName());
+            if (userOpt.isPresent()) {
+                currentUserName = userOpt.get().getName();
+                currentUserId = userOpt.get().getId();
+            }
+        }
+
+        // Prepend commenter name to comment actions: "Comment added: "text"" -> "John Doe: text"
+        String finalAction = action;
+        if (action != null && action.startsWith("Comment added:") && currentUserName != null) {
+            String commentText = action.substring("Comment added:".length()).trim();
+            // Strip surrounding quotes if present
+            if (commentText.startsWith("\"") && commentText.endsWith("\"")) {
+                commentText = commentText.substring(1, commentText.length() - 1);
+            }
+            finalAction = currentUserName + ": " + commentText;
+        }
+
         CaseHistory historyEntry = new CaseHistory();
         historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
-        historyEntry.setAction(action);
+        historyEntry.setAction(finalAction);
         historyEntry.setOnboardingCase(onboardingCase);
         onboardingCase.getHistory().add(historyEntry);
 
         caseRepository.save(onboardingCase);
+
+        // Notify the assigned reviewer when a comment is added
+        if (action != null && action.startsWith("Comment added:") && notificationService != null) {
+            String assignedUserId = getAssignedUserId(onboardingCase.getAssignedTo());
+            if (assignedUserId != null && !assignedUserId.equals(currentUserId)) {
+                notificationService.notifyUser(
+                        assignedUserId,
+                        "New Comment on Your Case",
+                        String.format("A comment was added to case %s ('%s') by %s.",
+                                caseId, onboardingCase.getBusinessName(),
+                                currentUserName != null ? currentUserName : "a user"),
+                        "INFO", "CASE_STATUS", "Case", caseId, true);
+            }
+        }
     }
 
     /**

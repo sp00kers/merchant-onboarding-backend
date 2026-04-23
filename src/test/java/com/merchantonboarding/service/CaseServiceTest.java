@@ -242,7 +242,7 @@ class CaseServiceTest {
 
     @Test
     void deleteCase_Success() {
-        when(caseRepository.existsById("MOP-2026-001")).thenReturn(true);
+        when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
 
         assertDoesNotThrow(() -> caseService.deleteCase("MOP-2026-001"));
         verify(caseRepository).deleteById("MOP-2026-001");
@@ -250,7 +250,7 @@ class CaseServiceTest {
 
     @Test
     void deleteCase_NotFound() {
-        when(caseRepository.existsById("NONEXISTENT")).thenReturn(false);
+        when(caseRepository.findById("NONEXISTENT")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
                 () -> caseService.deleteCase("NONEXISTENT"));
