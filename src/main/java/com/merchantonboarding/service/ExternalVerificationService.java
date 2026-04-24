@@ -75,7 +75,7 @@ public class ExternalVerificationService {
 
         VerificationResult verification;
         if (existing.isPresent()) {
-            // Re-trigger: reset existing record instead of creating a duplicate
+            // Re-trigger: reset existing record
             verification = existing.get();
             verification.setStatus("PENDING");
             verification.setConfidenceScore(null);
