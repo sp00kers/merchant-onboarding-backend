@@ -56,6 +56,7 @@ class BusinessParamsServiceTest {
     // Business Types
     // ═══════════════════════════════════════════════════════
 
+    // Test: retrieving all business types returns the complete list (e.g. Sdn Bhd, Enterprise, etc.)
     @Test
     void getAllBusinessTypes_ReturnsList() {
         when(businessTypeRepository.findAll()).thenReturn(List.of(testBusinessType));
@@ -66,6 +67,7 @@ class BusinessParamsServiceTest {
         assertEquals("Sdn Bhd", result.get(0).getName());
     }
 
+    // Test: filtering business types by search keyword (e.g. "Sdn") returns matching results
     @Test
     void filterBusinessTypes_BySearch() {
         when(businessTypeRepository.searchBusinessTypes("Sdn")).thenReturn(List.of(testBusinessType));
@@ -75,6 +77,7 @@ class BusinessParamsServiceTest {
         assertEquals(1, result.size());
     }
 
+    // Test: filtering business types by status "active" returns only active business types
     @Test
     void filterBusinessTypes_ByStatus() {
         when(businessTypeRepository.findAll()).thenReturn(List.of(testBusinessType));
@@ -84,6 +87,7 @@ class BusinessParamsServiceTest {
         assertEquals(1, result.size());
     }
 
+    // Test: filtering business types by status "inactive" correctly excludes active business types (returns empty)
     @Test
     void filterBusinessTypes_ByStatusFiltersOut() {
         when(businessTypeRepository.findAll()).thenReturn(List.of(testBusinessType));
@@ -93,6 +97,7 @@ class BusinessParamsServiceTest {
         assertEquals(0, result.size());
     }
 
+    // Test: retrieving a business type by its ID returns the correct data
     @Test
     void getBusinessTypeById_Found() {
         when(businessTypeRepository.findById("bt_1")).thenReturn(Optional.of(testBusinessType));
@@ -103,6 +108,7 @@ class BusinessParamsServiceTest {
         assertEquals("Sdn Bhd", result.getName());
     }
 
+    // Test: retrieving a non-existent business type throws ResourceNotFoundException (404)
     @Test
     void getBusinessTypeById_NotFound() {
         when(businessTypeRepository.findById("nonexistent")).thenReturn(Optional.empty());
@@ -111,6 +117,7 @@ class BusinessParamsServiceTest {
                 () -> businessParamsService.getBusinessTypeById("nonexistent"));
     }
 
+    // Test: creating a new business type with a unique code succeeds and defaults status to "active"
     @Test
     void createBusinessType_Success() {
         BusinessTypeDTO dto = new BusinessTypeDTO();
@@ -128,6 +135,7 @@ class BusinessParamsServiceTest {
         assertEquals("active", result.getStatus());
     }
 
+    // Test: creating a business type with a duplicate code (e.g. "SDN" already exists) is rejected
     @Test
     void createBusinessType_DuplicateCode() {
         BusinessTypeDTO dto = new BusinessTypeDTO();
@@ -141,6 +149,7 @@ class BusinessParamsServiceTest {
         assertEquals("Business type code already exists", ex.getMessage());
     }
 
+    // Test: updating an existing business type successfully changes its name and description
     @Test
     void updateBusinessType_Success() {
         BusinessTypeDTO dto = new BusinessTypeDTO();
@@ -157,6 +166,7 @@ class BusinessParamsServiceTest {
         assertEquals("Updated Sdn Bhd", result.getName());
     }
 
+    // Test: deleting an existing business type succeeds and calls deleteById on the repository
     @Test
     void deleteBusinessType_Success() {
         when(businessTypeRepository.existsById("bt_1")).thenReturn(true);
@@ -165,6 +175,7 @@ class BusinessParamsServiceTest {
         verify(businessTypeRepository).deleteById("bt_1");
     }
 
+    // Test: deleting a non-existent business type throws ResourceNotFoundException (404)
     @Test
     void deleteBusinessType_NotFound() {
         when(businessTypeRepository.existsById("nonexistent")).thenReturn(false);
@@ -177,6 +188,7 @@ class BusinessParamsServiceTest {
     // Merchant Categories
     // ═══════════════════════════════════════════════════════
 
+    // Test: retrieving all merchant categories returns the complete list with risk levels
     @Test
     void getAllMerchantCategories_ReturnsList() {
         when(merchantCategoryRepository.findAll()).thenReturn(List.of(testMerchantCategory));
@@ -188,6 +200,7 @@ class BusinessParamsServiceTest {
         assertEquals("low", result.get(0).getRiskLevel());
     }
 
+    // Test: filtering merchant categories by risk level "low" returns only low-risk categories
     @Test
     void filterMerchantCategories_ByRiskLevel() {
         when(merchantCategoryRepository.findAll()).thenReturn(List.of(testMerchantCategory));
@@ -198,6 +211,7 @@ class BusinessParamsServiceTest {
         assertEquals(1, result.size());
     }
 
+    // Test: filtering merchant categories by risk level "high" correctly excludes low-risk categories (returns empty)
     @Test
     void filterMerchantCategories_ByRiskLevelFiltersOut() {
         when(merchantCategoryRepository.findAll()).thenReturn(List.of(testMerchantCategory));
@@ -208,6 +222,7 @@ class BusinessParamsServiceTest {
         assertEquals(0, result.size());
     }
 
+    // Test: creating a new merchant category with a unique code succeeds and preserves the risk level
     @Test
     void createMerchantCategory_Success() {
         MerchantCategoryDTO dto = new MerchantCategoryDTO();
@@ -226,6 +241,7 @@ class BusinessParamsServiceTest {
         assertEquals("medium", result.getRiskLevel());
     }
 
+    // Test: creating a merchant category with a duplicate code (e.g. "RET" already exists) is rejected
     @Test
     void createMerchantCategory_DuplicateCode() {
         MerchantCategoryDTO dto = new MerchantCategoryDTO();
@@ -238,6 +254,7 @@ class BusinessParamsServiceTest {
         assertEquals("Merchant category code already exists", ex.getMessage());
     }
 
+    // Test: updating an existing merchant category successfully changes its name and risk level
     @Test
     void updateMerchantCategory_Success() {
         MerchantCategoryDTO dto = new MerchantCategoryDTO();
@@ -256,6 +273,7 @@ class BusinessParamsServiceTest {
         assertEquals("high", result.getRiskLevel());
     }
 
+    // Test: deleting an existing merchant category succeeds and calls deleteById on the repository
     @Test
     void deleteMerchantCategory_Success() {
         when(merchantCategoryRepository.existsById("mc_1")).thenReturn(true);
@@ -264,6 +282,7 @@ class BusinessParamsServiceTest {
         verify(merchantCategoryRepository).deleteById("mc_1");
     }
 
+    // Test: deleting a non-existent merchant category throws ResourceNotFoundException (404)
     @Test
     void deleteMerchantCategory_NotFound() {
         when(merchantCategoryRepository.existsById("nonexistent")).thenReturn(false);

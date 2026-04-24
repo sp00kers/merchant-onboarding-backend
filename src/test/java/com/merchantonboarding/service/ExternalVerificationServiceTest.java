@@ -82,6 +82,7 @@ class ExternalVerificationServiceTest {
 
     // ─── triggerVerification() ──────────────────────────────
 
+    // Test: triggering a new verification creates a PENDING record in the database and publishes a Kafka message to the verification-request topic
     @Test
     void triggerVerification_NewVerification() {
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
@@ -104,6 +105,7 @@ class ExternalVerificationServiceTest {
         verify(kafkaTemplate).send(eq("verification-request"), eq("MOP-2026-001"), any());
     }
 
+    // Test: if a verification is already PENDING, return the existing one without saving again or sending a duplicate Kafka message
     @Test
     void triggerVerification_ExistingPending() {
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
@@ -119,6 +121,7 @@ class ExternalVerificationServiceTest {
         verify(kafkaTemplate, never()).send(anyString(), anyString(), any());
     }
 
+    // Test: re-triggering a previously completed (PASSED) verification resets it to PENDING and clears the old score
     @Test
     void triggerVerification_RetriggerCompleted() {
         testVerification.setStatus("PASSED");
@@ -138,6 +141,7 @@ class ExternalVerificationServiceTest {
         verify(verificationResultRepository).save(any());
     }
 
+    // Test: triggering verification for a non-existent case throws ResourceNotFoundException (404)
     @Test
     void triggerVerification_CaseNotFound() {
         when(caseRepository.findById("NONEXISTENT")).thenReturn(Optional.empty());
@@ -148,6 +152,7 @@ class ExternalVerificationServiceTest {
 
     // ─── triggerAllVerifications() ──────────────────────────
 
+    // Test: triggerAllVerifications triggers all 3 types (BUSINESS_REGISTRATION, DIRECTOR_ID, BENEFICIAL_OWNERSHIP) at once
     @Test
     void triggerAllVerifications_TriggersThreeTypes() {
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
@@ -168,6 +173,7 @@ class ExternalVerificationServiceTest {
 
     // ─── getVerificationResults() ──────────────────────────
 
+    // Test: retrieving verification results for a case returns the list of all verification records
     @Test
     void getVerificationResults_ReturnsList() {
         when(verificationResultRepository.findByOnboardingCaseCaseIdOrderByRequestedAtDesc("MOP-2026-001"))
@@ -181,6 +187,7 @@ class ExternalVerificationServiceTest {
 
     // ─── getVerificationSummary() ──────────────────────────
 
+    // Test: when all 3 verification types pass, the summary overall status is "ALL_PASSED" with 3 completed and 0 failed
     @Test
     void getVerificationSummary_AllPassed() {
         VerificationResult v1 = createVerification("BUSINESS_REGISTRATION", "PASSED");
@@ -200,6 +207,7 @@ class ExternalVerificationServiceTest {
         assertEquals(0, summary.getFailedCount());
     }
 
+    // Test: when any verification type fails, the summary overall status is "ISSUES_FOUND"
     @Test
     void getVerificationSummary_IssuesFound() {
         VerificationResult v1 = createVerification("BUSINESS_REGISTRATION", "PASSED");
@@ -217,6 +225,7 @@ class ExternalVerificationServiceTest {
         assertEquals(1, summary.getFailedCount());
     }
 
+    // Test: when some verifications are still pending, the summary overall status is "IN_PROGRESS"
     @Test
     void getVerificationSummary_InProgress() {
         VerificationResult v1 = createVerification("BUSINESS_REGISTRATION", "PASSED");
@@ -233,6 +242,7 @@ class ExternalVerificationServiceTest {
         assertEquals("IN_PROGRESS", summary.getOverallStatus());
     }
 
+    // Test: when no verifications exist at all, the summary overall status is "NOT_STARTED"
     @Test
     void getVerificationSummary_NotStarted() {
         when(verificationResultRepository.findByOnboardingCaseCaseIdOrderByRequestedAtDesc("MOP-2026-001"))
@@ -248,6 +258,7 @@ class ExternalVerificationServiceTest {
 
     // ─── Recommendation thresholds ──────────────────────────
 
+    // Test: average confidence score >= 90 results in "AUTO_APPROVE" recommendation (merchant is highly trustworthy)
     @Test
     void getVerificationSummary_AutoApprove() {
         VerificationResult v1 = createVerification("BUSINESS_REGISTRATION", "PASSED");
@@ -262,6 +273,7 @@ class ExternalVerificationServiceTest {
         assertEquals("AUTO_APPROVE", summary.getRecommendation());
     }
 
+    // Test: average confidence score 70-89 results in "MANUAL_REVIEW" recommendation (needs human review)
     @Test
     void getVerificationSummary_ManualReview() {
         VerificationResult v1 = createVerification("BUSINESS_REGISTRATION", "PASSED");
@@ -276,6 +288,7 @@ class ExternalVerificationServiceTest {
         assertEquals("MANUAL_REVIEW", summary.getRecommendation());
     }
 
+    // Test: average confidence score 50-69 results in "ENHANCED_DUE_DILIGENCE" recommendation (higher scrutiny needed)
     @Test
     void getVerificationSummary_EnhancedDueDiligence() {
         VerificationResult v1 = createVerification("BUSINESS_REGISTRATION", "PASSED");
@@ -290,6 +303,7 @@ class ExternalVerificationServiceTest {
         assertEquals("ENHANCED_DUE_DILIGENCE", summary.getRecommendation());
     }
 
+    // Test: average confidence score below 50 results in "REJECTION_RECOMMENDED" (merchant is too risky)
     @Test
     void getVerificationSummary_RejectionRecommended() {
         VerificationResult v1 = createVerification("BUSINESS_REGISTRATION", "FAILED");

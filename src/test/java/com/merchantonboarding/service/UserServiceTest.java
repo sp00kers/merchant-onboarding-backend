@@ -26,6 +26,7 @@ import com.merchantonboarding.model.User;
 import com.merchantonboarding.repository.RoleRepository;
 import com.merchantonboarding.repository.UserRepository;
 
+// Unit test for UserService using Mockito — tests user CRUD, Spring Security integration, and business rules
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
@@ -66,6 +67,9 @@ class UserServiceTest {
 
     // ─── loadUserByUsername() ──────────────────────────────
 
+    // Tests loading a user by email for Spring Security authentication
+    // Verifies that both the ROLE_ authority (e.g., ROLE_ONBOARDING_OFFICER) and 
+    // individual permission authorities (e.g., CASE_CREATION) are included
     @Test
     void loadUserByUsername_Found() {
         when(userRepository.findByEmail("john.doe@bank.com")).thenReturn(Optional.of(testUser));
@@ -81,6 +85,8 @@ class UserServiceTest {
                 .anyMatch(a -> a.getAuthority().equals("CASE_CREATION")));
     }
 
+    // Tests that looking up a non-existent email throws UsernameNotFoundException
+    // This is required by Spring Security's UserDetailsService contract
     @Test
     void loadUserByUsername_NotFound() {
         when(userRepository.findByEmail("unknown@bank.com")).thenReturn(Optional.empty());
@@ -91,6 +97,8 @@ class UserServiceTest {
 
     // ─── createUser() ──────────────────────────────────────
 
+    // Tests creating a new user: verifies password is encoded (hashed) before saving,
+    // and the correct role is assigned from the database
     @Test
     void createUser_Success() {
         UserDTO dto = new UserDTO();
@@ -112,6 +120,8 @@ class UserServiceTest {
         verify(passwordEncoder).encode("password123");
     }
 
+    // Tests that creating a user with a non-bank email domain (e.g., @gmail.com) is rejected
+    // Security rule: only bank employees with @bank.com emails can be registered
     @Test
     void createUser_InvalidEmailDomain() {
         UserDTO dto = new UserDTO();
@@ -121,6 +131,7 @@ class UserServiceTest {
         verify(userRepository, never()).save(any());
     }
 
+    // Tests that creating a user with an email that already exists is blocked
     @Test
     void createUser_DuplicateEmail() {
         UserDTO dto = new UserDTO();
@@ -134,6 +145,7 @@ class UserServiceTest {
 
     // ─── updateUser() ──────────────────────────────────────
 
+    // Tests updating user details (name, department, phone) successfully
     @Test
     void updateUser_Success() {
         UserDTO dto = new UserDTO();
@@ -154,6 +166,7 @@ class UserServiceTest {
         assertEquals("Updated Name", result.getName());
     }
 
+    // Tests that changing a user's email to one already used by another user is blocked
     @Test
     void updateUser_EmailChangedToDuplicate() {
         User otherUser = new User();
@@ -172,6 +185,7 @@ class UserServiceTest {
 
     // ─── deleteUser() ──────────────────────────────────────
 
+    // Tests successful user deletion by ID
     @Test
     void deleteUser_Success() {
         when(userRepository.existsById("USR001")).thenReturn(true);
@@ -180,6 +194,7 @@ class UserServiceTest {
         verify(userRepository).deleteById("USR001");
     }
 
+    // Tests that deleting a non-existent user throws ResourceNotFoundException
     @Test
     void deleteUser_NotFound() {
         when(userRepository.existsById("NONEXISTENT")).thenReturn(false);
@@ -190,6 +205,7 @@ class UserServiceTest {
 
     // ─── toggleUserStatus() ──────────────────────────────────
 
+    // Tests toggling an active user to inactive status (deactivation)
     @Test
     void toggleUserStatus_ActiveToInactive() {
         testUser.setStatus("active");
@@ -201,6 +217,7 @@ class UserServiceTest {
         assertEquals("inactive", result.getStatus());
     }
 
+    // Tests toggling an inactive user back to active status (reactivation)
     @Test
     void toggleUserStatus_InactiveToActive() {
         testUser.setStatus("inactive");
@@ -212,6 +229,7 @@ class UserServiceTest {
         assertEquals("active", result.getStatus());
     }
 
+    // Tests that admin users CANNOT be deactivated — business rule to prevent locking out all admins
     @Test
     void toggleUserStatus_AdminCannotBeDeactivated() {
         Role adminRole = new Role();
@@ -229,6 +247,7 @@ class UserServiceTest {
 
     // ─── getUsersByRole() & searchUsers() ──────────────────
 
+    // Tests filtering users by their assigned role (e.g., get all onboarding officers)
     @Test
     void getUsersByRole_ReturnsList() {
         when(userRepository.findUsersByRole("onboarding_officer")).thenReturn(List.of(testUser));
@@ -239,6 +258,7 @@ class UserServiceTest {
         assertEquals("John Doe", result.get(0).getName());
     }
 
+    // Tests searching users by keyword (searches across name, email, department)
     @Test
     void searchUsers_ByKeyword() {
         when(userRepository.searchUsers("John")).thenReturn(List.of(testUser));

@@ -23,6 +23,8 @@ import com.merchantonboarding.model.Role;
 import com.merchantonboarding.repository.PermissionRepository;
 import com.merchantonboarding.repository.RoleRepository;
 
+// Unit test for RoleService — tests role CRUD, permission CRUD, and the permission-checking logic
+// that controls what each user role can access in the system
 @ExtendWith(MockitoExtension.class)
 class RoleServiceTest {
 
@@ -60,6 +62,7 @@ class RoleServiceTest {
 
     // ─── Role CRUD ──────────────────────────────────────────
 
+    // Tests retrieving all roles from the database
     @Test
     void getAllRoles_ReturnsList() {
         when(roleRepository.findAll()).thenReturn(List.of(testRole));
@@ -70,6 +73,7 @@ class RoleServiceTest {
         assertEquals("Onboarding Officer", result.get(0).getName());
     }
 
+    // Tests that only active roles are returned (inactive roles are filtered out)
     @Test
     void getActiveRoles_ReturnsActiveOnly() {
         when(roleRepository.findByIsActiveTrue()).thenReturn(List.of(testRole));
@@ -80,6 +84,7 @@ class RoleServiceTest {
         assertTrue(result.get(0).isActive());
     }
 
+    // Tests getting a role by ID — returns the role DTO with correct fields
     @Test
     void getRoleById_Found() {
         when(roleRepository.findById("onboarding_officer")).thenReturn(Optional.of(testRole));
@@ -90,6 +95,7 @@ class RoleServiceTest {
         assertEquals("Onboarding Officer", result.getName());
     }
 
+    // Tests that looking up a non-existent role ID throws ResourceNotFoundException
     @Test
     void getRoleById_NotFound() {
         when(roleRepository.findById("nonexistent")).thenReturn(Optional.empty());
@@ -98,6 +104,7 @@ class RoleServiceTest {
                 () -> roleService.getRoleById("nonexistent"));
     }
 
+    // Tests creating a new role with assigned permissions — verifies the role is saved with correct permission set
     @Test
     void createRole_Success() {
         RoleDTO dto = new RoleDTO();
@@ -117,6 +124,7 @@ class RoleServiceTest {
         assertTrue(result.getPermissions().contains("case_creation"));
     }
 
+    // Tests updating an existing role's name, description, and permissions
     @Test
     void updateRole_Success() {
         RoleDTO dto = new RoleDTO();
@@ -134,6 +142,7 @@ class RoleServiceTest {
         assertEquals("Updated Officer", result.getName());
     }
 
+    // Tests successful deletion of a role by ID
     @Test
     void deleteRole_Success() {
         when(roleRepository.existsById("onboarding_officer")).thenReturn(true);
@@ -142,6 +151,7 @@ class RoleServiceTest {
         verify(roleRepository).deleteById("onboarding_officer");
     }
 
+    // Tests that deleting a non-existent role throws ResourceNotFoundException
     @Test
     void deleteRole_NotFound() {
         when(roleRepository.existsById("nonexistent")).thenReturn(false);
@@ -152,6 +162,8 @@ class RoleServiceTest {
 
     // ─── userHasPermission() ──────────────────────────────────
 
+    // Tests that the "admin" role automatically has ALL permissions regardless of what's assigned
+    // This is a hardcoded business rule — admins can do everything
     @Test
     void userHasPermission_AdminHasAll() {
         Role adminRole = new Role();
@@ -162,6 +174,7 @@ class RoleServiceTest {
         assertTrue(roleService.userHasPermission("admin", "any_permission"));
     }
 
+    // Tests that a role with a specific permission (case_creation) returns true when checked
     @Test
     void userHasPermission_HasSpecificPermission() {
         when(roleRepository.findById("onboarding_officer")).thenReturn(Optional.of(testRole));
@@ -169,6 +182,7 @@ class RoleServiceTest {
         assertTrue(roleService.userHasPermission("onboarding_officer", "case_creation"));
     }
 
+    // Tests that checking for a permission the role doesn't have returns false
     @Test
     void userHasPermission_DoesNotHavePermission() {
         when(roleRepository.findById("onboarding_officer")).thenReturn(Optional.of(testRole));
@@ -176,6 +190,7 @@ class RoleServiceTest {
         assertFalse(roleService.userHasPermission("onboarding_officer", "user_management"));
     }
 
+    // Tests that a role with the "all_modules" permission acts as a wildcard — has access to everything
     @Test
     void userHasPermission_AllModules() {
         Role superRole = new Role();
@@ -186,6 +201,7 @@ class RoleServiceTest {
         assertTrue(roleService.userHasPermission("super_user", "any_permission_id"));
     }
 
+    // Tests that checking permissions for a non-existent role returns false (not an error)
     @Test
     void userHasPermission_RoleNotFound() {
         when(roleRepository.findById("nonexistent")).thenReturn(Optional.empty());
@@ -195,6 +211,7 @@ class RoleServiceTest {
 
     // ─── Permission CRUD ──────────────────────────────────────
 
+    // Tests creating a new permission with ID, name, description, and category
     @Test
     void createPermission_Success() {
         PermissionDTO dto = new PermissionDTO();
@@ -212,6 +229,7 @@ class RoleServiceTest {
         assertEquals("New Permission", result.getName());
     }
 
+    // Tests updating an existing permission's name, description, and category
     @Test
     void updatePermission_Success() {
         PermissionDTO dto = new PermissionDTO();
@@ -228,6 +246,7 @@ class RoleServiceTest {
         assertEquals("Updated Permission", result.getName());
     }
 
+    // Tests successful deletion of a permission by ID
     @Test
     void deletePermission_Success() {
         when(permissionRepository.existsById("case_creation")).thenReturn(true);
@@ -236,6 +255,7 @@ class RoleServiceTest {
         verify(permissionRepository).deleteById("case_creation");
     }
 
+    // Tests that deleting a non-existent permission throws ResourceNotFoundException
     @Test
     void deletePermission_NotFound() {
         when(permissionRepository.existsById("nonexistent")).thenReturn(false);
@@ -244,6 +264,7 @@ class RoleServiceTest {
                 () -> roleService.deletePermission("nonexistent"));
     }
 
+    // Tests filtering permissions by category (e.g., "cases", "system", "users")
     @Test
     void getPermissionsByCategory_ReturnsList() {
         when(permissionRepository.findByCategory("cases")).thenReturn(List.of(testPermission));
@@ -254,6 +275,7 @@ class RoleServiceTest {
         assertEquals("case_creation", result.get(0).getId());
     }
 
+    // Tests that only active permissions are returned (inactive ones are filtered out)
     @Test
     void getActivePermissions_ReturnsActiveOnly() {
         when(permissionRepository.findByIsActiveTrue()).thenReturn(List.of(testPermission));

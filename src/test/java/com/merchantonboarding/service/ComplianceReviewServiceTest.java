@@ -79,6 +79,7 @@ class ComplianceReviewServiceTest {
 
     // ─── triggerReview() ──────────────────────────────────
 
+    // Test: triggering a new compliance review creates a PENDING record and publishes a Kafka message to the compliance-request topic
     @Test
     void triggerReview_NewReview() {
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
@@ -101,6 +102,7 @@ class ComplianceReviewServiceTest {
         verify(kafkaTemplate).send(eq("compliance-request"), eq("MOP-2026-001"), any());
     }
 
+    // Test: if a compliance review is already PENDING, return the existing one without saving again or sending a duplicate Kafka message
     @Test
     void triggerReview_ExistingPending() {
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
@@ -114,6 +116,7 @@ class ComplianceReviewServiceTest {
         verify(complianceReviewResultRepository, never()).save(any());
     }
 
+    // Test: re-triggering a previously FAILED review resets it to PENDING, clears the old reason, and sends a new Kafka message
     @Test
     void triggerReview_RetriggerFailed() {
         testReview.setStatus("FAILED");
@@ -133,6 +136,7 @@ class ComplianceReviewServiceTest {
         verify(complianceReviewResultRepository).save(any());
     }
 
+    // Test: triggering a review for a non-existent case throws ResourceNotFoundException (404)
     @Test
     void triggerReview_CaseNotFound() {
         when(caseRepository.findById("NONEXISTENT")).thenReturn(Optional.empty());
@@ -143,6 +147,7 @@ class ComplianceReviewServiceTest {
 
     // ─── triggerAllReviews() ──────────────────────────────
 
+    // Test: triggerAllReviews triggers all 3 compliance types (BUSINESS_LICENSE, PCI_DSS_SAQ, TERMS_OF_SERVICE) at once
     @Test
     void triggerAllReviews_TriggersThreeTypes() {
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
@@ -163,6 +168,7 @@ class ComplianceReviewServiceTest {
 
     // ─── getReviewResults() ──────────────────────────────
 
+    // Test: retrieving compliance review results for a case returns the list of all review records
     @Test
     void getReviewResults_ReturnsList() {
         when(complianceReviewResultRepository.findByOnboardingCaseCaseIdOrderByRequestedAtDesc("MOP-2026-001"))
@@ -176,6 +182,7 @@ class ComplianceReviewServiceTest {
 
     // ─── getReviewSummary() ──────────────────────────────
 
+    // Test: when all 3 compliance review types pass, the summary overall status is "ALL_PASSED" with 3 passed and 0 failed
     @Test
     void getReviewSummary_AllPassed() {
         ComplianceReviewResult r1 = createReview("BUSINESS_LICENSE", "PASSED");
@@ -193,6 +200,7 @@ class ComplianceReviewServiceTest {
         assertEquals(0, summary.getFailedCount());
     }
 
+    // Test: when any compliance review fails, the summary overall status is "ISSUES_FOUND"
     @Test
     void getReviewSummary_IssuesFound() {
         ComplianceReviewResult r1 = createReview("BUSINESS_LICENSE", "PASSED");
@@ -207,6 +215,7 @@ class ComplianceReviewServiceTest {
         assertEquals("ISSUES_FOUND", summary.getOverallStatus());
     }
 
+    // Test: when some compliance reviews are still pending, the summary overall status is "IN_PROGRESS"
     @Test
     void getReviewSummary_InProgress() {
         ComplianceReviewResult r1 = createReview("BUSINESS_LICENSE", "PASSED");
@@ -221,6 +230,7 @@ class ComplianceReviewServiceTest {
         assertEquals("IN_PROGRESS", summary.getOverallStatus());
     }
 
+    // Test: when no compliance reviews exist at all, the summary overall status is "NOT_STARTED"
     @Test
     void getReviewSummary_NotStarted() {
         when(complianceReviewResultRepository.findByOnboardingCaseCaseIdOrderByRequestedAtDesc("MOP-2026-001"))

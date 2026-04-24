@@ -29,6 +29,8 @@ import com.merchantonboarding.model.User;
 import com.merchantonboarding.repository.RoleRepository;
 import com.merchantonboarding.repository.UserRepository;
 
+// Unit test for AuthService using Mockito — no real database, Kafka, or Spring context needed
+// Tests authentication (login), user registration, and JWT token refresh logic
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
@@ -76,6 +78,8 @@ class AuthServiceTest {
 
     // ─── authenticate() ─────────────────────────────────────
 
+    // Tests successful login: verifies credentials are valid, JWT token is generated,
+    // user info is returned, and a LOGIN_SUCCESS audit log entry is recorded
     @Test
     void authenticate_Success() {
         Authentication auth = mock(Authentication.class);
@@ -96,6 +100,7 @@ class AuthServiceTest {
                 eq("USR001"), eq("john.doe@bank.com"), any(), isNull(), isNull(), eq("SUCCESS"), anyString());
     }
 
+    // Tests login with an email that doesn't exist in the database — should throw ResourceNotFoundException
     @Test
     void authenticate_UserNotFound() {
         Authentication auth = mock(Authentication.class);
@@ -105,6 +110,8 @@ class AuthServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> authService.authenticate(loginRequest));
     }
 
+    // Tests login with a deactivated account — should block access and log LOGIN_FAILED audit event
+    // This prevents suspended employees from accessing the system
     @Test
     void authenticate_DeactivatedAccount() {
         testUser.setStatus("inactive");
@@ -119,6 +126,8 @@ class AuthServiceTest {
                 eq("USR001"), eq("john.doe@bank.com"), any(), isNull(), isNull(), eq("FAILURE"), eq("Account deactivated"));
     }
 
+    // Tests login with wrong password — Spring Security throws BadCredentialsException,
+    // and a LOGIN_FAILED audit log is recorded for security monitoring
     @Test
     void authenticate_BadCredentials() {
         when(authenticationManager.authenticate(any()))
@@ -131,6 +140,7 @@ class AuthServiceTest {
 
     // ─── register() ─────────────────────────────────────
 
+    // Tests successful registration: password is hashed (encoded), user is saved to DB, and JWT token is returned
     @Test
     void register_Success() {
         UserDTO userDTO = new UserDTO();
@@ -152,6 +162,8 @@ class AuthServiceTest {
         verify(passwordEncoder).encode("password123");
     }
 
+    // Tests registration with non-bank email (e.g., @gmail.com) — only @bank.com emails are allowed
+    // This is a security rule to restrict registration to internal bank employees only
     @Test
     void register_InvalidEmailDomain() {
         UserDTO userDTO = new UserDTO();
@@ -161,6 +173,7 @@ class AuthServiceTest {
         verify(userRepository, never()).save(any());
     }
 
+    // Tests registration with an email that already exists — should throw RuntimeException to prevent duplicates
     @Test
     void register_DuplicateEmail() {
         UserDTO userDTO = new UserDTO();
@@ -172,6 +185,7 @@ class AuthServiceTest {
         assertEquals("Email already exists", ex.getMessage());
     }
 
+    // Tests registration without specifying a role — defaults to "onboarding_officer" role
     @Test
     void register_DefaultRole() {
         UserDTO userDTO = new UserDTO();
@@ -194,6 +208,7 @@ class AuthServiceTest {
 
     // ─── refreshToken() ─────────────────────────────────────
 
+    // Tests refreshing a valid JWT token — extracts username from old token, validates it, and issues a new token
     @Test
     void refreshToken_Valid() {
         when(jwtService.extractUsername("valid-token")).thenReturn("john.doe@bank.com");
@@ -208,6 +223,7 @@ class AuthServiceTest {
         assertEquals("new-token", response.getToken());
     }
 
+    // Tests refreshing an expired or invalid JWT token — should throw RuntimeException and deny access
     @Test
     void refreshToken_Invalid() {
         when(jwtService.extractUsername("invalid-token")).thenReturn("john.doe@bank.com");

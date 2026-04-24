@@ -51,6 +51,7 @@ class AuditServiceTest {
 
     // ─── logAction() ──────────────────────────────────────
 
+    // Test: logging an audit action saves the record with correct action type, entity type, and entity ID
     @Test
     void logAction_Success() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(inv -> {
@@ -69,6 +70,7 @@ class AuditServiceTest {
         verify(auditLogRepository).save(any(AuditLog.class));
     }
 
+    // Test: logging an action with null optional fields (entityId, userId, IP, etc.) still succeeds without errors
     @Test
     void logAction_NullValues() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -82,6 +84,7 @@ class AuditServiceTest {
         assertNull(result.getNewValue());
     }
 
+    // Test: when old/new value objects are provided, they are serialized to JSON strings for change tracking
     @Test
     void logAction_SerializesObjectToJson() throws JsonProcessingException {
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"status\":\"active\"}");
@@ -97,8 +100,7 @@ class AuditServiceTest {
     }
 
     // ─── getAuditLogs() ──────────────────────────────────
-
-    @Test
+    // Test: retrieving audit logs returns a paginated result sorted by newest first    @Test
     void getAuditLogs_Paginated() {
         Page<AuditLog> page = new PageImpl<>(List.of(testLog));
         when(auditLogRepository.findAllByOrderByTimestampDesc(any(Pageable.class))).thenReturn(page);
@@ -109,6 +111,7 @@ class AuditServiceTest {
         assertEquals("CREATE_CASE", result.getContent().get(0).getAction());
     }
 
+    // Test: retrieving audit logs with all filters (entity type, action, userId, date range) returns matching results
     @Test
     void getAuditLogsWithFilters_AllFilters() {
         LocalDateTime start = LocalDateTime.now().minusDays(7);
@@ -125,6 +128,7 @@ class AuditServiceTest {
         assertEquals(1, result.getTotalElements());
     }
 
+    // Test: retrieving all audit logs for a specific entity (e.g. Case MOP-2026-001) returns its full history
     @Test
     void getAuditLogsForEntity_ReturnsList() {
         when(auditLogRepository.findByEntityTypeAndEntityIdOrderByTimestampDesc("Case", "MOP-2026-001"))
@@ -136,6 +140,7 @@ class AuditServiceTest {
         assertEquals("MOP-2026-001", result.get(0).getEntityId());
     }
 
+    // Test: retrieving all audit logs for a specific user returns paginated results of their actions
     @Test
     void getAuditLogsForUser_Paginated() {
         Page<AuditLog> page = new PageImpl<>(List.of(testLog));
@@ -149,6 +154,7 @@ class AuditServiceTest {
 
     // ─── Distinct queries ──────────────────────────────────
 
+    // Test: getDistinctActions returns all unique action types (e.g. CREATE_CASE, UPDATE_CASE) for filter dropdowns in the UI
     @Test
     void getDistinctActions_ReturnsList() {
         when(auditLogRepository.findDistinctActions())
@@ -160,6 +166,7 @@ class AuditServiceTest {
         assertTrue(result.contains("CREATE_CASE"));
     }
 
+    // Test: getDistinctEntityTypes returns all unique entity types (e.g. Case, User, Role) for filter dropdowns in the UI
     @Test
     void getDistinctEntityTypes_ReturnsList() {
         when(auditLogRepository.findDistinctEntityTypes())
@@ -172,8 +179,7 @@ class AuditServiceTest {
     }
 
     // ─── Count queries ──────────────────────────────────
-
-    @Test
+    // Test: counting total audit events since a given timestamp (used for dashboard activity statistics)    @Test
     void getAuditCountSince_ReturnsCount() {
         LocalDateTime since = LocalDateTime.now().minusDays(1);
         when(auditLogRepository.countByTimestampAfter(since)).thenReturn(42L);
@@ -183,6 +189,7 @@ class AuditServiceTest {
         assertEquals(42L, result);
     }
 
+    // Test: counting login failures since a given timestamp (used for security monitoring on the dashboard)
     @Test
     void getLoginFailureCountSince_ReturnsCount() {
         LocalDateTime since = LocalDateTime.now().minusDays(1);
