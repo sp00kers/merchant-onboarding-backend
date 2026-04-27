@@ -56,23 +56,17 @@ public class OnboardingCase {
     @Column(length = 50)
     private String status = "Pending Review";
 
+    @Column(name = "rejected_at_stage", length = 50)
+    private String rejectedAtStage;
+
     @Column(name = "created_date")
     private String createdDate;
 
     @Column(name = "assigned_to")
     private String assignedTo;
 
-    @Column(length = 20)
-    private String priority = "Normal";
-
     @Column(name = "last_updated")
     private String lastUpdated;
-
-    @Column(name = "risk_score")
-    private Integer riskScore;
-
-    @Column(name = "risk_level", length = 20)
-    private String riskLevel;
 
     @OneToMany(mappedBy = "onboardingCase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Document> documents = new ArrayList<>();

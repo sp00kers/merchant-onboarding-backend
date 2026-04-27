@@ -13,10 +13,18 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,11 +44,17 @@ public class CaseService {
     @Autowired
     private CaseRepository caseRepository;
 
+    @Autowired
+    private com.merchantonboarding.repository.DocumentRepository documentRepository;
+
     @Autowired(required = false)
     private NotificationService notificationService;
 
     @Autowired
     private com.merchantonboarding.repository.UserRepository userRepository;
+
+    @Value("${app.upload.dir:uploads}")
+    private String uploadDir;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -86,7 +100,7 @@ public class CaseService {
         // Add initial history entry
         CaseHistory historyEntry = new CaseHistory();
         historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
-        historyEntry.setAction("Case created by " + (caseDTO.getAssignedTo() != null ? caseDTO.getAssignedTo() : "System"));
+        historyEntry.setAction("Case created by " + getCurrentUserName());
         historyEntry.setOnboardingCase(newCase);
         newCase.getHistory().add(historyEntry);
 
@@ -100,6 +114,58 @@ public class CaseService {
         }
 
         return convertToDTO(savedCase);
+    }
+
+    /**
+     * Save case as draft (no notifications, forces Draft status)
+     */
+    @Auditable(action = "SAVE_DRAFT", entityType = "Case")
+    public CaseDTO saveDraft(CaseDTO caseDTO) {
+        caseDTO.setStatus("Draft");
+        OnboardingCase newCase = convertToEntity(caseDTO);
+
+        if (newCase.getCaseId() == null || newCase.getCaseId().isEmpty()) {
+            newCase.setCaseId(generateCaseId());
+        }
+
+        CaseHistory historyEntry = new CaseHistory();
+        historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
+        historyEntry.setAction("Draft case created by " + getCurrentUserName());
+        historyEntry.setOnboardingCase(newCase);
+        newCase.getHistory().add(historyEntry);
+
+        OnboardingCase savedCase = caseRepository.save(newCase);
+        return convertToDTO(savedCase);
+    }
+
+    /**
+     * Update draft case (no validation, keeps Draft status)
+     */
+    @Auditable(action = "UPDATE_DRAFT", entityType = "Case")
+    public CaseDTO updateDraft(String caseId, CaseDTO caseDTO) {
+        OnboardingCase existingCase = caseRepository.findById(caseId)
+            .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
+
+        existingCase.setBusinessName(caseDTO.getBusinessName());
+        existingCase.setBusinessType(caseDTO.getBusinessType());
+        existingCase.setRegistrationNumber(caseDTO.getRegistrationNumber());
+        existingCase.setMerchantCategory(caseDTO.getMerchantCategory());
+        existingCase.setBusinessAddress(caseDTO.getBusinessAddress());
+        existingCase.setDirectorName(caseDTO.getDirectorName());
+        existingCase.setDirectorIC(caseDTO.getDirectorIC());
+        existingCase.setDirectorPhone(caseDTO.getDirectorPhone());
+        existingCase.setDirectorEmail(caseDTO.getDirectorEmail());
+        existingCase.setAssignedTo(caseDTO.getAssignedTo());
+        existingCase.setLastUpdated(LocalDateTime.now().format(DATETIME_FORMATTER));
+
+        CaseHistory historyEntry = new CaseHistory();
+        historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
+        historyEntry.setAction("Draft case updated");
+        historyEntry.setOnboardingCase(existingCase);
+        existingCase.getHistory().add(historyEntry);
+
+        OnboardingCase updatedCase = caseRepository.save(existingCase);
+        return convertToDTO(updatedCase);
     }
 
     /**
@@ -119,6 +185,12 @@ public class CaseService {
         OnboardingCase existingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
 
+        // Prevent editing of Rejected or Approved cases
+        String currentStatus = existingCase.getStatus();
+        if (currentStatus != null && (currentStatus.equalsIgnoreCase("Rejected") || currentStatus.equalsIgnoreCase("Approved"))) {
+            throw new IllegalStateException("Cases with status '" + currentStatus + "' cannot be edited");
+        }
+
         // Track status change for history
         String oldStatus = existingCase.getStatus();
 
@@ -133,7 +205,6 @@ public class CaseService {
         existingCase.setDirectorPhone(caseDTO.getDirectorPhone());
         existingCase.setDirectorEmail(caseDTO.getDirectorEmail());
         existingCase.setAssignedTo(caseDTO.getAssignedTo());
-        existingCase.setPriority(caseDTO.getPriority());
 
         if (caseDTO.getStatus() != null) {
             existingCase.setStatus(caseDTO.getStatus());
@@ -157,8 +228,11 @@ public class CaseService {
      */
     @Auditable(action = "DELETE_CASE", entityType = "Case")
     public void deleteCase(String caseId) {
-        if (!caseRepository.existsById(caseId)) {
-            throw new ResourceNotFoundException("Case not found with id: " + caseId);
+        OnboardingCase existingCase = caseRepository.findById(caseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
+        String status = existingCase.getStatus();
+        if ("Approved".equalsIgnoreCase(status) || "Rejected".equalsIgnoreCase(status)) {
+            throw new IllegalStateException("Cannot delete a case with status: " + status);
         }
         caseRepository.deleteById(caseId);
     }
@@ -224,6 +298,11 @@ public class CaseService {
         String oldStatus = onboardingCase.getStatus();
         onboardingCase.setStatus(status);
 
+        // Track which stage the case was rejected at
+        if ("Rejected".equalsIgnoreCase(status)) {
+            onboardingCase.setRejectedAtStage(oldStatus);
+        }
+
         // Add history entry for status change
         CaseHistory historyEntry = new CaseHistory();
         historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
@@ -250,13 +329,50 @@ public class CaseService {
         OnboardingCase onboardingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
 
+        // Resolve current user for comment attribution
+        String currentUserName = null;
+        String currentUserId = null;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getName() != null) {
+            var userOpt = userRepository.findByEmail(auth.getName());
+            if (userOpt.isPresent()) {
+                currentUserName = userOpt.get().getName();
+                currentUserId = userOpt.get().getId();
+            }
+        }
+
+        // Prepend commenter name to comment actions: "Comment added: "text"" -> "John Doe: text"
+        String finalAction = action;
+        if (action != null && action.startsWith("Comment added:") && currentUserName != null) {
+            String commentText = action.substring("Comment added:".length()).trim();
+            // Strip surrounding quotes if present
+            if (commentText.startsWith("\"") && commentText.endsWith("\"")) {
+                commentText = commentText.substring(1, commentText.length() - 1);
+            }
+            finalAction = currentUserName + ": " + commentText;
+        }
+
         CaseHistory historyEntry = new CaseHistory();
         historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
-        historyEntry.setAction(action);
+        historyEntry.setAction(finalAction);
         historyEntry.setOnboardingCase(onboardingCase);
         onboardingCase.getHistory().add(historyEntry);
 
         caseRepository.save(onboardingCase);
+
+        // Notify the assigned reviewer when a comment is added
+        if (action != null && action.startsWith("Comment added:") && notificationService != null) {
+            String assignedUserId = getAssignedUserId(onboardingCase.getAssignedTo());
+            if (assignedUserId != null && !assignedUserId.equals(currentUserId)) {
+                notificationService.notifyUser(
+                        assignedUserId,
+                        "New Comment on Your Case",
+                        String.format("A comment was added to case %s ('%s') by %s.",
+                                caseId, onboardingCase.getBusinessName(),
+                                currentUserName != null ? currentUserName : "a user"),
+                        "INFO", "CASE_STATUS", "Case", caseId, true);
+            }
+        }
     }
 
     /**
@@ -302,9 +418,19 @@ public class CaseService {
         OnboardingCase onboardingCase = caseRepository.findById(caseId)
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
 
-        Path uploadDir = Paths.get("uploads", caseId);
+        // Validate file types before processing
+        List<String> allowedExtensions = List.of(".pdf", ".jpg", ".jpeg", ".png");
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) continue;
+            String originalName = file.getOriginalFilename();
+            if (originalName == null || allowedExtensions.stream().noneMatch(ext -> originalName.toLowerCase().endsWith(ext))) {
+                throw new IllegalArgumentException("Only PDF, JPEG, and PNG file types accepted.");
+            }
+        }
+
+        Path uploadPath = Paths.get(uploadDir, caseId);
         try {
-            Files.createDirectories(uploadDir);
+            Files.createDirectories(uploadPath);
         } catch (IOException e) {
             throw new RuntimeException("Failed to create upload directory", e);
         }
@@ -315,7 +441,7 @@ public class CaseService {
 
             String originalName = file.getOriginalFilename();
             String safeName = UUID.randomUUID() + "_" + (originalName != null ? originalName.replaceAll("[^a-zA-Z0-9._-]", "_") : "file");
-            Path filePath = uploadDir.resolve(safeName);
+            Path filePath = uploadPath.resolve(safeName);
 
             try {
                 Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
@@ -340,6 +466,40 @@ public class CaseService {
 
         OnboardingCase saved = caseRepository.save(onboardingCase);
         return convertToDTO(saved);
+    }
+
+    /**
+     * Download a document by its ID, ensuring it belongs to the specified case.
+     */
+    public ResponseEntity<Resource> downloadDocument(String caseId, Long documentId) {
+        Document document = documentRepository.findById(documentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Document not found with id: " + documentId));
+
+        // Verify document belongs to the requested case
+        if (!document.getOnboardingCase().getCaseId().equals(caseId)) {
+            throw new ResourceNotFoundException("Document does not belong to case: " + caseId);
+        }
+
+        try {
+            Path filePath = Paths.get(document.getFilePath()).toAbsolutePath().normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists()) {
+                throw new ResourceNotFoundException("File not found on disk: " + document.getName());
+            }
+
+            String contentType = Files.probeContentType(filePath);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.getName() + "\"")
+                .body(resource);
+        } catch (IOException e) {
+            throw new RuntimeException("Error reading file: " + document.getName(), e);
+        }
     }
 
     private String generateCaseId() {
@@ -374,18 +534,17 @@ public class CaseService {
         dto.setDirectorPhone(c.getDirectorPhone());
         dto.setDirectorEmail(c.getDirectorEmail());
         dto.setStatus(c.getStatus());
+        dto.setRejectedAtStage(c.getRejectedAtStage());
         dto.setCreatedDate(c.getCreatedDate());
         dto.setAssignedTo(c.getAssignedTo());
-        dto.setPriority(c.getPriority());
         dto.setLastUpdated(c.getLastUpdated());
-        dto.setRiskScore(c.getRiskScore());
-        dto.setRiskLevel(c.getRiskLevel());
 
         // Convert documents
         if (c.getDocuments() != null) {
             dto.setDocuments(c.getDocuments().stream()
                 .map(d -> {
                     CaseDTO.DocumentDTO docDTO = new CaseDTO.DocumentDTO();
+                    docDTO.setId(d.getId());
                     docDTO.setName(d.getName());
                     docDTO.setType(d.getType());
                     docDTO.setUploadedAt(d.getUploadedAt());
@@ -422,11 +581,27 @@ public class CaseService {
         c.setDirectorPhone(dto.getDirectorPhone());
         c.setDirectorEmail(dto.getDirectorEmail());
         c.setAssignedTo(dto.getAssignedTo());
-        c.setPriority(dto.getPriority() != null ? dto.getPriority() : "Normal");
         c.setStatus(dto.getStatus() != null ? dto.getStatus() : "Pending Review");
         c.setCreatedDate(dto.getCreatedDate() != null ? dto.getCreatedDate() : LocalDateTime.now().format(DATE_FORMATTER));
 
         return c;
+    }
+
+    /**
+     * Get the current logged-in user's name from the security context
+     */
+    private String getCurrentUserName() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null) {
+                return userRepository.findByEmail(auth.getName())
+                        .map(u -> u.getName())
+                        .orElse("System");
+            }
+        } catch (Exception e) {
+            // Fall back to System if security context is unavailable
+        }
+        return "System";
     }
 
     /**

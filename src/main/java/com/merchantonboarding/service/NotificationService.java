@@ -59,7 +59,14 @@ public class NotificationService {
         if (messagingTemplate != null) {
             try {
                 NotificationDTO dto = convertToDTO(notification);
-                messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", dto);
+                // The STOMP principal is the user's email (from JWT), not the userId,
+                // so we must resolve the email to route the message correctly.
+                String destination = userId;
+                Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isPresent() && userOpt.get().getEmail() != null) {
+                    destination = userOpt.get().getEmail();
+                }
+                messagingTemplate.convertAndSendToUser(destination, "/queue/notifications", dto);
             } catch (Exception e) {
                 // Log but don't fail if WebSocket is unavailable
                 System.err.println("Failed to send WebSocket notification: " + e.getMessage());
@@ -181,7 +188,13 @@ public class NotificationService {
         String message = String.format("Verification (%s) for case %s ('%s') completed with confidence score: %d%%.",
                 verificationType, caseId, businessName, confidenceScore);
 
-        notifyUser(reviewerId, title, message, "SUCCESS", "VERIFICATION", "Case", caseId, true);
+        // Notify assigned reviewer
+        if (reviewerId != null && !reviewerId.isEmpty()) {
+            notifyUser(reviewerId, title, message, "SUCCESS", "VERIFICATION", "Case", caseId, true);
+        }
+
+        // Notify all admins
+        notifyUsersByRole("admin", title, message, "SUCCESS", "VERIFICATION", "Case", caseId, false);
     }
 
     public void notifyDocumentUploaded(String caseId, String businessName, int documentCount, String reviewerId) {

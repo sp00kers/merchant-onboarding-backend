@@ -47,7 +47,7 @@ public class ExportController {
      * Export a single case to CSV
      */
     @GetMapping("/case/{caseId}/csv")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'REPORTS', 'ALL_MODULES')")
     public ResponseEntity<byte[]> exportCaseToCsv(@PathVariable String caseId) {
         try {
             String csv = exportService.exportCaseToCsv(caseId);
@@ -85,7 +85,7 @@ public class ExportController {
      * Export a single case to PDF
      */
     @GetMapping("/case/{caseId}/pdf")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'REPORTS', 'ALL_MODULES')")
     public ResponseEntity<byte[]> exportCaseToPdf(@PathVariable String caseId) {
         try {
             byte[] pdf = exportService.exportCaseToPdf(caseId);

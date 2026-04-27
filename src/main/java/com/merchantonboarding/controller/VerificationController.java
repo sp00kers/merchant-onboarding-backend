@@ -27,7 +27,7 @@ public class VerificationController {
      * Trigger all verification types for a case
      */
     @PostMapping("/trigger/{caseId}")
-    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'EXTERNAL_API_ACCESS', 'ALL_MODULES')")
     public ResponseEntity<List<VerificationDTO>> triggerAllVerifications(@PathVariable String caseId) {
         List<VerificationDTO> results = verificationService.triggerAllVerifications(caseId);
         return ResponseEntity.ok(results);
@@ -37,7 +37,7 @@ public class VerificationController {
      * Trigger a specific verification type for a case
      */
     @PostMapping("/trigger/{caseId}/{verificationType}")
-    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'EXTERNAL_API_ACCESS', 'ALL_MODULES')")
     public ResponseEntity<VerificationDTO> triggerVerification(
             @PathVariable String caseId,
             @PathVariable String verificationType) {
@@ -49,7 +49,7 @@ public class VerificationController {
      * Get all verification results for a case
      */
     @GetMapping("/{caseId}")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
     public ResponseEntity<List<VerificationDTO>> getVerificationResults(@PathVariable String caseId) {
         List<VerificationDTO> results = verificationService.getVerificationResults(caseId);
         return ResponseEntity.ok(results);
@@ -59,7 +59,7 @@ public class VerificationController {
      * Get verification summary for a case
      */
     @GetMapping("/{caseId}/summary")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'VERIFICATION_REPORTS', 'ALL_MODULES')")
     public ResponseEntity<VerificationDTO.VerificationSummary> getVerificationSummary(@PathVariable String caseId) {
         VerificationDTO.VerificationSummary summary = verificationService.getVerificationSummary(caseId);
         return ResponseEntity.ok(summary);
@@ -69,14 +69,12 @@ public class VerificationController {
      * Get available verification types
      */
     @GetMapping("/types")
-    @PreAuthorize("hasAnyAuthority('CASE_VIEW', 'CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'ALL_MODULES')")
+    @PreAuthorize("hasAnyAuthority('CASE_MANAGEMENT', 'BACKGROUND_CHECK', 'ALL_MODULES')")
     public ResponseEntity<List<Map<String, String>>> getVerificationTypes() {
         List<Map<String, String>> types = List.of(
-            Map.of("code", "BUSINESS_REGISTRY", "name", "Business Registry", "description", "Verify business registration with SSM"),
-            Map.of("code", "IDENTITY_VERIFICATION", "name", "Identity Verification", "description", "Verify director identity and conduct watchlist check"),
-            Map.of("code", "ADDRESS_VERIFICATION", "name", "Address Verification", "description", "Verify business address existence"),
-            Map.of("code", "FINANCIAL_CHECK", "name", "Financial Check", "description", "Credit score and litigation check"),
-            Map.of("code", "SANCTIONS_SCREENING", "name", "Sanctions Screening", "description", "Screen against global sanctions and watchlists")
+            Map.of("code", "BUSINESS_REGISTRATION", "name", "Business Registration Certificate", "description", "Verify business registration certificate with SSM"),
+            Map.of("code", "DIRECTOR_ID", "name", "Director Government ID", "description", "Verify director government-issued identification"),
+            Map.of("code", "BENEFICIAL_OWNERSHIP", "name", "Beneficial Ownership Declaration", "description", "Verify beneficial ownership declaration")
         );
         return ResponseEntity.ok(types);
     }

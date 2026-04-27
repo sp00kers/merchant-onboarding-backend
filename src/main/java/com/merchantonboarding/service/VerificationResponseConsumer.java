@@ -62,14 +62,13 @@ public class VerificationResponseConsumer {
 
             verificationResultRepository.save(verification);
 
-            log.info("Updated verification result id={} for case {} type {} → status={} score={}",
+            log.info("Updated verification result id={} for case {} type {} to status={} score={}",
                     verification.getId(), event.getCaseId(), event.getVerificationType(),
                     event.getStatus(), event.getConfidenceScore());
 
-            // Send real-time notification to the assigned reviewer
+            // Send real-time notification to the assigned reviewer and admins
             OnboardingCase onboardingCase = verification.getOnboardingCase();
-            if (notificationService != null && onboardingCase != null
-                    && onboardingCase.getAssignedTo() != null) {
+            if (notificationService != null && onboardingCase != null) {
                 notificationService.notifyVerificationComplete(
                         event.getCaseId(),
                         onboardingCase.getBusinessName(),

@@ -20,6 +20,7 @@ public class CaseDTO {
     private String businessType;
     
     @NotBlank(message = "Registration number is required")
+    @Pattern(regexp = "^[0-9]{12}$", message = "Registration Number must have 12 numbers.")
     private String registrationNumber;
 
     @NotBlank(message = "Merchant category is required")
@@ -35,27 +36,24 @@ public class CaseDTO {
     @NotBlank(message = "Director IC is required")
     private String directorIC;
 
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Phone number must be 10-15 digits")
+    @Pattern(regexp = "^\\+?[0-9]{8,11}$", message = "The phone number's length should be between 8 to 11.")
     private String directorPhone;
 
     @Email(message = "Email should be valid")
     private String directorEmail;
 
     private String status;
+    private String rejectedAtStage;
     private String createdDate;
     private String assignedTo;
-    private String priority;
     private String lastUpdated;
-
-    // Risk scoring fields
-    private Integer riskScore;
-    private String riskLevel;
 
     private List<DocumentDTO> documents;
     private List<CaseHistoryDTO> history;
 
     @Data
     public static class DocumentDTO {
+        private Long id;
         private String name;
         private String type;
         private String uploadedAt;
