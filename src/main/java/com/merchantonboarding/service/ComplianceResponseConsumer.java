@@ -56,15 +56,22 @@ public class ComplianceResponseConsumer {
                         review.getId(), event.getCaseId(), event.getDocumentType(), event.getStatus());
 
                 OnboardingCase onboardingCase = review.getOnboardingCase();
-                if (notificationService != null && onboardingCase != null
-                        && onboardingCase.getAssignedTo() != null) {
+                if (notificationService != null && onboardingCase != null) {
                         String title = "Compliance Review Complete";
                         String message = String.format("Compliance review (%s) for case %s ('%s') completed: %s.",
                                 event.getDocumentType(), event.getCaseId(), onboardingCase.getBusinessName(), event.getStatus());
-                        notificationService.notifyUser(
-                                onboardingCase.getAssignedTo(), title, message,
-                                "PASSED".equals(event.getStatus()) ? "SUCCESS" : "WARNING",
-                                "COMPLIANCE", "Case", event.getCaseId(), true);
+                        String type = "PASSED".equals(event.getStatus()) ? "SUCCESS" : "WARNING";
+
+                        // Notify assigned reviewer
+                        if (onboardingCase.getAssignedTo() != null) {
+                                notificationService.notifyUser(
+                                        onboardingCase.getAssignedTo(), title, message,
+                                        type, "COMPLIANCE", "Case", event.getCaseId(), true);
+                        }
+
+                        // Notify all admins
+                        notificationService.notifyUsersByRole("admin", title, message,
+                                type, "COMPLIANCE", "Case", event.getCaseId(), false);
                 }
                 } catch (Exception e) {
                 log.error("Error processing compliance response for case {} type {}: {}",

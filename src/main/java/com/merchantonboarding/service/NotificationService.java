@@ -181,7 +181,13 @@ public class NotificationService {
         String message = String.format("Verification (%s) for case %s ('%s') completed with confidence score: %d%%.",
                 verificationType, caseId, businessName, confidenceScore);
 
-        notifyUser(reviewerId, title, message, "SUCCESS", "VERIFICATION", "Case", caseId, true);
+        // Notify assigned reviewer
+        if (reviewerId != null && !reviewerId.isEmpty()) {
+            notifyUser(reviewerId, title, message, "SUCCESS", "VERIFICATION", "Case", caseId, true);
+        }
+
+        // Notify all admins
+        notifyUsersByRole("admin", title, message, "SUCCESS", "VERIFICATION", "Case", caseId, false);
     }
 
     public void notifyDocumentUploaded(String caseId, String businessName, int documentCount, String reviewerId) {

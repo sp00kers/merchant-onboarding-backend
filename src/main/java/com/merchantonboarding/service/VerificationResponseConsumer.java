@@ -66,10 +66,9 @@ public class VerificationResponseConsumer {
                     verification.getId(), event.getCaseId(), event.getVerificationType(),
                     event.getStatus(), event.getConfidenceScore());
 
-            // Send real-time notification to the assigned reviewer
+            // Send real-time notification to the assigned reviewer and admins
             OnboardingCase onboardingCase = verification.getOnboardingCase();
-            if (notificationService != null && onboardingCase != null
-                    && onboardingCase.getAssignedTo() != null) {
+            if (notificationService != null && onboardingCase != null) {
                 notificationService.notifyVerificationComplete(
                         event.getCaseId(),
                         onboardingCase.getBusinessName(),
