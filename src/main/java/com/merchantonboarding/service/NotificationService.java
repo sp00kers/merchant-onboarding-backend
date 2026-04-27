@@ -59,7 +59,14 @@ public class NotificationService {
         if (messagingTemplate != null) {
             try {
                 NotificationDTO dto = convertToDTO(notification);
-                messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", dto);
+                // The STOMP principal is the user's email (from JWT), not the userId,
+                // so we must resolve the email to route the message correctly.
+                String destination = userId;
+                Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isPresent() && userOpt.get().getEmail() != null) {
+                    destination = userOpt.get().getEmail();
+                }
+                messagingTemplate.convertAndSendToUser(destination, "/queue/notifications", dto);
             } catch (Exception e) {
                 // Log but don't fail if WebSocket is unavailable
                 System.err.println("Failed to send WebSocket notification: " + e.getMessage());
