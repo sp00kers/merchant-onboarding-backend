@@ -1,7 +1,6 @@
 /**
  * Third-Party Verification & Compliance Review Portal
  *
- * Replaces the automated mock API with a manual review interface.
  * When "Start Verification" or "Start Review" is triggered from the main app,
  * Kafka delivers requests here. A reviewer opens http://localhost:3001,
  * views documents, and clicks Pass or Fail for each.
