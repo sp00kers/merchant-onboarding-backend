@@ -110,6 +110,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle optimistic lock exceptions (concurrent modification conflicts)
+     */
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockException(
+            org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
+
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setMessage("This record was modified by another user. Please refresh and try again.");
+        errorResponse.setStatus(HttpStatus.CONFLICT.value());
+        errorResponse.setTimestamp(LocalDateTime.now());
+        errorResponse.setErrors(null);
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
+    /**
      * Handle general exceptions
      */
     @ExceptionHandler(Exception.class)

@@ -296,6 +296,12 @@ public class CaseService {
             .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
 
         String oldStatus = onboardingCase.getStatus();
+
+        // Prevent changes to cases that already have a final decision
+        if ("Approved".equalsIgnoreCase(oldStatus) || "Rejected".equalsIgnoreCase(oldStatus)) {
+            throw new IllegalStateException("Case already has a final decision: " + oldStatus + ". No further status changes are allowed.");
+        }
+
         onboardingCase.setStatus(status);
 
         // Track which stage the case was rejected at
