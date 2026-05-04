@@ -231,6 +231,11 @@ public class UserService implements UserDetailsService {
         String newStatus = "active".equals(user.getStatus()) ? "inactive" : "active";
         user.setStatus(newStatus);
 
+        // If deactivating, clear active session to force immediate logout
+        if ("inactive".equals(newStatus)) {
+            user.setActiveSessionToken(null);
+        }
+
         User updatedUser = userRepository.save(user);
         return convertToDTO(updatedUser);
     }
