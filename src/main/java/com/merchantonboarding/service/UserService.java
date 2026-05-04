@@ -222,6 +222,13 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
 
+        // Prevent admins from deactivating their own account
+        String currentEmail = org.springframework.security.core.context.SecurityContextHolder
+            .getContext().getAuthentication().getName();
+        if (user.getEmail().equals(currentEmail) && "active".equals(user.getStatus())) {
+            throw new RuntimeException("You cannot deactivate your own account");
+        }
+
         // Prevent deactivating admin users
         if (user.getRole() != null && "admin".equals(user.getRole().getId()) && "active".equals(user.getStatus())) {
             throw new RuntimeException("Admin users cannot be deactivated");
