@@ -191,6 +191,30 @@ public class CaseService {
             throw new IllegalStateException("Cases with status '" + currentStatus + "' cannot be edited");
         }
 
+        // Prevent compliance reviewers from editing Draft cases
+        if (currentStatus != null && currentStatus.equalsIgnoreCase("Draft")) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAdmin = auth.getAuthorities().stream()
+                    .anyMatch(a -> "ALL_MODULES".equals(a.getAuthority()));
+            boolean isOfficer = auth.getAuthorities().stream()
+                    .anyMatch(a -> "CASE_CREATION".equals(a.getAuthority()));
+            if (!isAdmin && !isOfficer) {
+                throw new IllegalStateException("Only onboarding officers and admins can edit Draft cases");
+            }
+        }
+
+        // Prevent compliance reviewers from editing Pending Review cases
+        if (currentStatus != null && currentStatus.equalsIgnoreCase("Pending Review")) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAdmin = auth.getAuthorities().stream()
+                    .anyMatch(a -> "ALL_MODULES".equals(a.getAuthority()));
+            boolean isOfficer = auth.getAuthorities().stream()
+                    .anyMatch(a -> "CASE_CREATION".equals(a.getAuthority()));
+            if (!isAdmin && !isOfficer) {
+                throw new IllegalStateException("Only onboarding officers and admins can edit cases in Pending Review");
+            }
+        }
+
         // Track status change for history
         String oldStatus = existingCase.getStatus();
 
