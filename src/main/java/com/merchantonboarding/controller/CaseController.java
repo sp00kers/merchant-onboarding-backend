@@ -176,8 +176,7 @@ public class CaseController {
     /**
      * Update case status
      * Requires CASE_MANAGEMENT permission.
-     * Admins can approve/reject any case.
-     * Compliance reviewers can only approve/reject cases assigned to them.
+     * Both admins and compliance reviewers can only approve/reject cases assigned to them.
      */
     @PatchMapping("/{caseId}/status")
     @PreAuthorize("hasAuthority('CASE_MANAGEMENT') or hasAuthority('ALL_MODULES')")
@@ -185,23 +184,17 @@ public class CaseController {
                                                     @RequestBody Map<String, String> request) {
         String status = request.get("status");
 
-        // Enforce: only the assigned compliance reviewer (or admin) can approve/reject
+        // Enforce: only the assigned user (admin or reviewer) can approve/reject
         if ("Approved".equals(status) || "Rejected".equals(status)) {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isAdmin = auth.getAuthorities().stream()
-                    .anyMatch(a -> "ALL_MODULES".equals(a.getAuthority()));
+            String email = auth.getName();
+            String currentUserName = userRepository.findByEmail(email)
+                    .map(User::getName)
+                    .orElse(null);
 
-            if (!isAdmin) {
-                // Look up current user's name from their email (principal)
-                String email = auth.getName();
-                String currentUserName = userRepository.findByEmail(email)
-                        .map(User::getName)
-                        .orElse(null);
-
-                CaseDTO caseData = caseService.getCaseById(caseId);
-                if (currentUserName == null || !currentUserName.equals(caseData.getAssignedTo())) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-                }
+            CaseDTO caseData = caseService.getCaseById(caseId);
+            if (currentUserName == null || !currentUserName.equals(caseData.getAssignedTo())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
         }
 

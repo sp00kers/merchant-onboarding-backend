@@ -154,13 +154,20 @@ public class NotificationService {
         String title = "New Case Created";
         String message = String.format("Case %s for '%s' has been created and requires review.", caseId, businessName);
 
-        // Notify assigned reviewer
+        // Notify assigned reviewer/admin
         if (assignedToId != null && !assignedToId.isEmpty()) {
             notifyUser(assignedToId, title, message, "INFO", "CASE_STATUS", "Case", caseId, true);
         }
 
-        // Notify all admins
-        notifyUsersByRole("admin", title, message, "INFO", "CASE_STATUS", "Case", caseId, false);
+        // Notify all admins (excluding the assignee to avoid duplicate)
+        List<User> admins = userRepository.findUsersByRole("admin");
+        List<String> adminIds = admins.stream()
+                .map(User::getId)
+                .filter(id -> !id.equals(assignedToId))
+                .collect(Collectors.toList());
+        if (!adminIds.isEmpty()) {
+            notifyUsers(adminIds, title, message, "INFO", "CASE_STATUS", "Case", caseId, false);
+        }
     }
 
     public void notifyCaseStatusChanged(String caseId, String businessName, String oldStatus,
