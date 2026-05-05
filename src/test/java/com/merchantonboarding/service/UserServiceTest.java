@@ -14,6 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -208,6 +211,13 @@ class UserServiceTest {
     // Tests toggling an active user to inactive status (deactivation)
     @Test
     void toggleUserStatus_ActiveToInactive() {
+        // Set up SecurityContext with a different user email
+        Authentication auth = mock(Authentication.class);
+        when(auth.getName()).thenReturn("admin@bank.com");
+        SecurityContext securityContext = mock(SecurityContext.class);
+        when(securityContext.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(securityContext);
+
         testUser.setStatus("active");
         when(userRepository.findById("USR001")).thenReturn(Optional.of(testUser));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -215,11 +225,20 @@ class UserServiceTest {
         UserDTO result = userService.toggleUserStatus("USR001");
 
         assertEquals("inactive", result.getStatus());
+
+        SecurityContextHolder.clearContext();
     }
 
     // Tests toggling an inactive user back to active status (reactivation)
     @Test
     void toggleUserStatus_InactiveToActive() {
+        // Set up SecurityContext with a different user email
+        Authentication auth = mock(Authentication.class);
+        when(auth.getName()).thenReturn("admin@bank.com");
+        SecurityContext securityContext = mock(SecurityContext.class);
+        when(securityContext.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(securityContext);
+
         testUser.setStatus("inactive");
         when(userRepository.findById("USR001")).thenReturn(Optional.of(testUser));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -227,11 +246,20 @@ class UserServiceTest {
         UserDTO result = userService.toggleUserStatus("USR001");
 
         assertEquals("active", result.getStatus());
+
+        SecurityContextHolder.clearContext();
     }
 
     // Tests that admin users CANNOT be deactivated — business rule to prevent locking out all admins
     @Test
     void toggleUserStatus_AdminCannotBeDeactivated() {
+        // Set up SecurityContext with a different user email
+        Authentication auth = mock(Authentication.class);
+        when(auth.getName()).thenReturn("admin@bank.com");
+        SecurityContext securityContext = mock(SecurityContext.class);
+        when(securityContext.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(securityContext);
+
         Role adminRole = new Role();
         adminRole.setId("admin");
         adminRole.setName("System Administrator");
@@ -243,6 +271,8 @@ class UserServiceTest {
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> userService.toggleUserStatus("USR001"));
         assertTrue(ex.getMessage().contains("Admin"));
+
+        SecurityContextHolder.clearContext();
     }
 
     // ─── getUsersByRole() & searchUsers() ──────────────────

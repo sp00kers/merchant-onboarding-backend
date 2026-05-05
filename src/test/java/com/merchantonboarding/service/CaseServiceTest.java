@@ -22,6 +22,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.merchantonboarding.dto.CaseDTO;
@@ -220,6 +224,13 @@ class CaseServiceTest {
     // Test: updating a case successfully saves changes and adds a history entry to track the status change
     @Test
     void updateCase_Success() {
+        // Set up SecurityContext since case is in "Pending Review" status
+        Authentication auth = mock(Authentication.class);
+        when(auth.getAuthorities()).thenReturn((java.util.Collection) List.of(new SimpleGrantedAuthority("CASE_CREATION")));
+        SecurityContext securityContext = mock(SecurityContext.class);
+        when(securityContext.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(securityContext);
+
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
         when(caseRepository.save(any(OnboardingCase.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -229,6 +240,8 @@ class CaseServiceTest {
         assertNotNull(result);
         // History should include status change entry
         assertFalse(result.getHistory().isEmpty());
+
+        SecurityContextHolder.clearContext();
     }
 
     // Test: editing a case that has been "Rejected" is blocked — rejected cases are final and cannot be modified
