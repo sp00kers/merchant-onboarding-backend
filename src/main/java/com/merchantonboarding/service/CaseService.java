@@ -261,7 +261,7 @@ public class CaseService {
         OnboardingCase existingCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
         String status = existingCase.getStatus();
-        if ("Approved".equalsIgnoreCase(status) || "Rejected".equalsIgnoreCase(status)) {
+        if (!"Draft".equalsIgnoreCase(status) && !"Pending Review".equalsIgnoreCase(status)) {
             throw new IllegalStateException("Cannot delete a case with status: " + status);
         }
         caseRepository.deleteById(caseId);
