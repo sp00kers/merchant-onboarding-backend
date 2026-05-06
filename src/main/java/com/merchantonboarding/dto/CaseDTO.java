@@ -46,6 +46,7 @@ public class CaseDTO {
     private String rejectedAtStage;
     private String createdDate;
     private String assignedTo;
+    private String assignedToName;
     private String lastUpdated;
 
     private List<DocumentDTO> documents;

@@ -108,9 +108,8 @@ public class CaseService {
 
         // Send notifications
         if (notificationService != null) {
-            String assignedUserId = getAssignedUserId(savedCase.getAssignedTo());
             notificationService.notifyCaseCreated(savedCase.getCaseId(), savedCase.getBusinessName(),
-                    null, assignedUserId);
+                    null, savedCase.getAssignedTo());
         }
 
         return convertToDTO(savedCase);
@@ -217,6 +216,13 @@ public class CaseService {
 
         // Track status change for history
         String oldStatus = existingCase.getStatus();
+
+        // Prevent Draft → Pending Review if no documents are uploaded
+        if ("Draft".equalsIgnoreCase(oldStatus) && "Pending Review".equalsIgnoreCase(caseDTO.getStatus())) {
+            if (existingCase.getDocuments() == null || existingCase.getDocuments().isEmpty()) {
+                throw new IllegalStateException("Cannot submit case without uploading all required documents");
+            }
+        }
 
         // Update fields
         existingCase.setBusinessName(caseDTO.getBusinessName());
@@ -344,9 +350,8 @@ public class CaseService {
 
         // Send notification for status change
         if (notificationService != null) {
-            String assignedUserId = getAssignedUserId(updatedCase.getAssignedTo());
             notificationService.notifyCaseStatusChanged(caseId, updatedCase.getBusinessName(),
-                    oldStatus, status, null, assignedUserId);
+                    oldStatus, status, null, updatedCase.getAssignedTo());
         }
 
         return convertToDTO(updatedCase);
@@ -392,7 +397,7 @@ public class CaseService {
 
         // Notify the assigned reviewer when a comment is added
         if (action != null && action.startsWith("Comment added:") && notificationService != null) {
-            String assignedUserId = getAssignedUserId(onboardingCase.getAssignedTo());
+            String assignedUserId = onboardingCase.getAssignedTo();
             if (assignedUserId != null && !assignedUserId.equals(currentUserId)) {
                 notificationService.notifyUser(
                         assignedUserId,
@@ -416,13 +421,17 @@ public class CaseService {
         String previousAssignee = onboardingCase.getAssignedTo();
         onboardingCase.setAssignedTo(assignedTo);
 
+        // Resolve names for human-readable history
+        String previousName = getAssignedUserName(previousAssignee);
+        String newName = getAssignedUserName(assignedTo);
+
         // Add history entry
         CaseHistory historyEntry = new CaseHistory();
         historyEntry.setTime(LocalDateTime.now().format(DATETIME_FORMATTER));
         if (previousAssignee != null && !previousAssignee.isEmpty()) {
-            historyEntry.setAction("Case reassigned from '" + previousAssignee + "' to '" + assignedTo + "'");
+            historyEntry.setAction("Case reassigned from '" + (previousName != null ? previousName : previousAssignee) + "' to '" + (newName != null ? newName : assignedTo) + "'");
         } else {
-            historyEntry.setAction("Case assigned to '" + assignedTo + "'");
+            historyEntry.setAction("Case assigned to '" + (newName != null ? newName : assignedTo) + "'");
         }
         historyEntry.setOnboardingCase(onboardingCase);
         onboardingCase.getHistory().add(historyEntry);
@@ -431,10 +440,9 @@ public class CaseService {
 
         // Send notification for assignment
         if (notificationService != null) {
-            String assignedUserId = getAssignedUserId(assignedTo);
-            if (assignedUserId != null) {
+            if (assignedTo != null && !assignedTo.isEmpty()) {
                 notificationService.notifyCaseAssigned(caseId, updatedCase.getBusinessName(),
-                        assignedUserId, null);
+                        assignedTo, null);
             }
         }
 
@@ -567,6 +575,7 @@ public class CaseService {
         dto.setRejectedAtStage(c.getRejectedAtStage());
         dto.setCreatedDate(c.getCreatedDate());
         dto.setAssignedTo(c.getAssignedTo());
+        dto.setAssignedToName(getAssignedUserName(c.getAssignedTo()));
         dto.setLastUpdated(c.getLastUpdated());
 
         // Convert documents
@@ -637,15 +646,12 @@ public class CaseService {
     /**
      * Get user ID from assigned name (for notifications)
      */
-    private String getAssignedUserId(String assignedToName) {
-        if (assignedToName == null || assignedToName.isEmpty()) {
+    private String getAssignedUserName(String assignedToId) {
+        if (assignedToId == null || assignedToId.isEmpty()) {
             return null;
         }
-        // Try to find user by name
-        return userRepository.findAll().stream()
-                .filter(u -> assignedToName.equals(u.getName()))
-                .map(u -> u.getId())
-                .findFirst()
+        return userRepository.findById(assignedToId)
+                .map(u -> u.getName())
                 .orElse(null);
     }
 }

@@ -188,12 +188,12 @@ public class CaseController {
         if ("Approved".equals(status) || "Rejected".equals(status)) {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String email = auth.getName();
-            String currentUserName = userRepository.findByEmail(email)
-                    .map(User::getName)
+            String currentUserId = userRepository.findByEmail(email)
+                    .map(User::getId)
                     .orElse(null);
 
             CaseDTO caseData = caseService.getCaseById(caseId);
-            if (currentUserName == null || !currentUserName.equals(caseData.getAssignedTo())) {
+            if (currentUserId == null || !currentUserId.equals(caseData.getAssignedTo())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
         }

@@ -69,7 +69,7 @@ class CaseServiceTest {
         testCase.setDirectorPhone("0121234567");
         testCase.setDirectorEmail("john@gmail.com");
         testCase.setStatus("Pending Review");
-        testCase.setAssignedTo("Sarah Lee");
+        testCase.setAssignedTo("USR003");
         testCase.setCreatedDate("2026-04-01");
         testCase.setDocuments(new ArrayList<>());
         testCase.setHistory(new ArrayList<>());
@@ -84,7 +84,7 @@ class CaseServiceTest {
         testCaseDTO.setDirectorIC("900101141234");
         testCaseDTO.setDirectorPhone("0121234567");
         testCaseDTO.setDirectorEmail("john@gmail.com");
-        testCaseDTO.setAssignedTo("Sarah Lee");
+        testCaseDTO.setAssignedTo("USR003");
     }
 
     // ─── getAllCases() ──────────────────────────────────────
@@ -134,7 +134,6 @@ class CaseServiceTest {
             if (c.getCaseId() == null) c.setCaseId("MOP-2026-001");
             return c;
         });
-        when(userRepository.findAll()).thenReturn(Collections.emptyList());
 
         CaseDTO result = caseService.createCase(testCaseDTO);
 
@@ -149,7 +148,6 @@ class CaseServiceTest {
         testCaseDTO.setCaseId(null);
         when(caseRepository.findAll()).thenReturn(Collections.emptyList());
         when(caseRepository.save(any(OnboardingCase.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(userRepository.findAll()).thenReturn(Collections.emptyList());
 
         CaseDTO result = caseService.createCase(testCaseDTO);
 
@@ -291,7 +289,6 @@ class CaseServiceTest {
     void updateCaseStatus_Success() {
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
         when(caseRepository.save(any(OnboardingCase.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(userRepository.findAll()).thenReturn(Collections.emptyList());
 
         CaseDTO result = caseService.updateCaseStatus("MOP-2026-001", "Background Verification");
 
@@ -304,7 +301,6 @@ class CaseServiceTest {
         testCase.setStatus("Compliance Review");
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
         when(caseRepository.save(any(OnboardingCase.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(userRepository.findAll()).thenReturn(Collections.emptyList());
 
         CaseDTO result = caseService.updateCaseStatus("MOP-2026-001", "Rejected");
 
@@ -319,14 +315,19 @@ class CaseServiceTest {
     void assignCase_Success() {
         when(caseRepository.findById("MOP-2026-001")).thenReturn(Optional.of(testCase));
         when(caseRepository.save(any(OnboardingCase.class))).thenAnswer(inv -> inv.getArgument(0));
+        User previousAssignee = new User();
+        previousAssignee.setId("USR003");
+        previousAssignee.setName("Sarah Lee");
+        when(userRepository.findById("USR003")).thenReturn(Optional.of(previousAssignee));
         User assignee = new User();
         assignee.setId("USR002");
         assignee.setName("Jane Smith");
-        when(userRepository.findAll()).thenReturn(List.of(assignee));
+        when(userRepository.findById("USR002")).thenReturn(Optional.of(assignee));
 
-        CaseDTO result = caseService.assignCase("MOP-2026-001", "Jane Smith");
+        CaseDTO result = caseService.assignCase("MOP-2026-001", "USR002");
 
-        assertEquals("Jane Smith", result.getAssignedTo());
+        assertEquals("USR002", result.getAssignedTo());
+        assertEquals("Jane Smith", result.getAssignedToName());
         verify(notificationService).notifyCaseAssigned(eq("MOP-2026-001"), eq("ABC Trading Sdn Bhd"),
                 eq("USR002"), isNull());
     }
