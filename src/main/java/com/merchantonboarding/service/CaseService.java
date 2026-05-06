@@ -487,12 +487,32 @@ public class CaseService {
                 throw new RuntimeException("Failed to store file: " + originalName, e);
             }
 
-            Document doc = new Document();
-            doc.setName(originalName);
-            doc.setType(types != null && i < types.length ? types[i] : file.getContentType());
-            doc.setFilePath(filePath.toString());
-            doc.setOnboardingCase(onboardingCase);
-            onboardingCase.getDocuments().add(doc);
+            String docType = types != null && i < types.length ? types[i] : file.getContentType();
+
+            // Replace existing document of the same type instead of adding a duplicate
+            Document existingDoc = onboardingCase.getDocuments().stream()
+                    .filter(d -> docType != null && docType.equals(d.getType()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (existingDoc != null) {
+                // Delete old file from disk
+                try {
+                    Path oldFilePath = Paths.get(existingDoc.getFilePath());
+                    Files.deleteIfExists(oldFilePath);
+                } catch (IOException e) {
+                    // Log but continue — old file cleanup is best-effort
+                }
+                existingDoc.setName(originalName);
+                existingDoc.setFilePath(filePath.toString());
+            } else {
+                Document doc = new Document();
+                doc.setName(originalName);
+                doc.setType(docType);
+                doc.setFilePath(filePath.toString());
+                doc.setOnboardingCase(onboardingCase);
+                onboardingCase.getDocuments().add(doc);
+            }
         }
 
         // Add history entry
