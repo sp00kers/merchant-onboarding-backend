@@ -99,7 +99,8 @@ class AuditServiceTest {
         assertEquals("{\"status\":\"active\"}", result.getOldValue());
     }
 
-    // Test: retrieving audit logs returns a paginated result sorted by newest first    @Test
+    // Test: retrieving audit logs returns a paginated result sorted by newest first    
+    @Test
     void getAuditLogs_Paginated() {
         Page<AuditLog> page = new PageImpl<>(List.of(testLog));
         when(auditLogRepository.findAllByOrderByTimestampDesc(any(Pageable.class))).thenReturn(page);
